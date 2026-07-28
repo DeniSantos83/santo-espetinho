@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { LogOut, UtensilsCrossed } from "lucide-react"
 import { supabase } from "../../lib/supabase"
-import ComandaPage from "./ComandaPage"
+import ComandaPage from "./ComandaPage";
 
 export default function DashboardGarcom() {
   const [nomeUsuario, setNomeUsuario] = useState("Garçom")
