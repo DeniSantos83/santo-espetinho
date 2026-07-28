@@ -33,12 +33,19 @@ function LoginPage() {
 
         <div className="text-center mb-8">
 
-          <img
-            src={logo}
-            alt="Santo Espetinho"
-            className="w-120 mx-auto mb-5"
-          />
+          <div className="text-center mb-8">
 
+  <img
+    src={logo}
+    alt="Santo Espetinho"
+    className="w-48 md:w-56 max-w-full h-auto mx-auto mb-5"
+  />
+
+  <p className="text-gray-500 mt-2">
+    Gestão de Mesas e Comandas
+  </p>
+
+</div>
           <h1 className="text-3xl font-bold text-gray-800">
             
           </h1>
