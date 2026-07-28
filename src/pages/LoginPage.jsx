@@ -1,57 +1,57 @@
-import { useState } from "react"
-import { supabase } from "../lib/supabase"
-import logo from "../assets/Santo Espetinho.png"
+import { useState } from "react";
+import { supabase } from "../lib/supabase";
+import logo from "../assets/Santo Espetinho.png";
 
 function LoginPage() {
-  const [email, setEmail] = useState("")
-  const [senha, setSenha] = useState("")
-  const [carregando, setCarregando] = useState(false)
-  const [erro, setErro] = useState("")
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
+  const [carregando, setCarregando] = useState(false);
+  const [erro, setErro] = useState("");
 
   async function fazerLogin(e) {
-    e.preventDefault()
-    setErro("")
-    setCarregando(true)
+    e.preventDefault();
+
+    setErro("");
+    setCarregando(true);
 
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password: senha,
-    })
+    });
 
     if (error) {
-      setErro("E-mail ou senha inválidos.")
-      setCarregando(false)
-      return
+      setErro("E-mail ou senha inválidos.");
+      setCarregando(false);
+      return;
     }
 
-    setCarregando(false)
+    setCarregando(false);
   }
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-gray-200 p-8">
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4">
+
+      <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-8">
 
         <div className="text-center mb-8">
 
-          <div className="text-center mb-8">
+          <img
+            src={logo}
+            alt="Santo Espetinho"
+            style={{
+              width: "220px",
+              height: "auto",
+              display: "block",
+              margin: "0 auto",
+            }}
+          />
 
-  <img
-    src={logo}
-    alt="Santo Espetinho"
-    className="w-48 md:w-56 max-w-full h-auto mx-auto mb-5"
-  />
-
-  <p className="text-gray-500 mt-2">
-    Gestão de Mesas e Comandas
-  </p>
-
-</div>
-          <h1 className="text-3xl font-bold text-gray-800">
-            
+          <h1 className="text-3xl font-bold text-gray-800 mt-4">
+            Santo Espetinho
           </h1>
 
           <p className="text-gray-500 mt-2">
-            Gestão de Mesas e Comandas
+            Sistema de Gestão de Mesas e Comandas
           </p>
 
         </div>
@@ -69,7 +69,7 @@ function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-gray-800 outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
+              className="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none"
             />
           </div>
 
@@ -84,12 +84,12 @@ function LoginPage() {
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
               required
-              className="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 text-gray-800 outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-200"
+              className="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 focus:border-orange-500 focus:ring-2 focus:ring-orange-200 outline-none"
             />
           </div>
 
           {erro && (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+            <div className="rounded-xl bg-red-50 border border-red-200 p-3 text-red-600 text-sm">
               {erro}
             </div>
           )}
@@ -97,28 +97,29 @@ function LoginPage() {
           <button
             type="submit"
             disabled={carregando}
-            className="w-full rounded-xl bg-orange-600 py-3 text-lg font-semibold text-white transition hover:bg-orange-700 disabled:opacity-60"
+            className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 rounded-xl transition"
           >
             {carregando ? "Entrando..." : "Entrar"}
           </button>
 
         </form>
 
-        <div className="mt-8 border-t pt-4 text-center">
+        <div className="mt-8 pt-4 border-t text-center">
 
           <p className="text-xs text-gray-400">
             Sistema de Gestão de Mesas e Comandas
           </p>
 
-          <p className="mt-1 text-xs text-gray-400">
+          <p className="text-xs text-gray-400 mt-1">
             Versão 1.0
           </p>
 
         </div>
 
       </div>
+
     </div>
-  )
+  );
 }
 
-export default LoginPage
+export default LoginPage;
