@@ -3,7 +3,7 @@ import { supabase } from "../lib/supabase";
 import logo from "../assets/Santo Espetinho.png";
 
 function LoginPage() {
-  const [email, setEmail] = useState("");
+  const [usuario, setUsuario] = useState("");
   const [senha, setSenha] = useState("");
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState("");
@@ -14,18 +14,22 @@ function LoginPage() {
     setErro("");
     setCarregando(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password: senha,
-    });
-
-    if (error) {
-      setErro("E-mail ou senha inválidos.");
+    try {
+      const { data, error } = await supabase.functions.invoke("login-usuario", {
+        body: { usuario: usuario.trim().toLowerCase(), senha },
+      });
+      if (error || !data?.access_token || !data?.refresh_token)
+        throw new Error("Usuário ou senha inválidos.");
+      const { error: erroSessao } = await supabase.auth.setSession({
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+      });
+      if (erroSessao) throw erroSessao;
+    } catch {
+      setErro("Usuário ou senha inválidos.");
+    } finally {
       setCarregando(false);
-      return;
     }
-
-    setCarregando(false);
   }
 
   return (
@@ -51,14 +55,14 @@ function LoginPage() {
       <form onSubmit={fazerLogin} className="space-y-5">
         <div>
           <label className="block text-sm font-medium text-zinc-300 mb-2">
-            E-mail
+            Usuário
           </label>
 
           <input
-            type="email"
-            placeholder="Digite seu e-mail"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            type="text"
+            placeholder="Ex.: moyses"
+            value={usuario}
+            onChange={(e) => setUsuario(e.target.value)}
             required
             className="w-full rounded-xl border border-zinc-700 bg-zinc-900 text-white placeholder:text-zinc-500 px-4 py-3 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/30"
           />
