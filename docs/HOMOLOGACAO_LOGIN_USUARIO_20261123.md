@@ -22,3 +22,10 @@
 - A conta Valdenir não existia na base no último levantamento. Não reutilizar a conta Italo, mesmo que seu e-mail se pareça com o nome de Valdenir.
 - Senhas de funcionários são gerenciadas pelo Supabase Auth, nunca em tabelas de dados.
 - Não coloque a chave `service_role` ou qualquer segredo no código público.
+
+## Verificações adicionais
+- O login em homologação mantém entrada por e-mail como contingência para contas antigas, sem exigir e-mail no campo de login.
+- Acesso às reservas e ajustes de comandas passou a exigir funcionário ativo; registro de movimentações foi liberado para funcionários ativos.
+- Testes com transações revertidas: administrador pode editar produtos; gerente e garçom não; garçom pode ler os 25 produtos e atualizar mesa.
+- 24 arquivos JS/JSX passaram pela análise sintática local (0 erros). O build completo do Vite continua pendente porque o pacote não estava disponível no ambiente de build.
+- Senhas não foram redefinidas e as contas de Valdenir e garçons ainda não existem. Não compartilhar credenciais até esse passo.
