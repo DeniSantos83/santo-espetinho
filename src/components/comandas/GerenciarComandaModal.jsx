@@ -56,6 +56,7 @@ export default function GerenciarComandaModal({
             descricao,
             preco,
             ativo,
+            disponivel,
             categoria_id,
             categorias (
               id,
@@ -119,6 +120,10 @@ export default function GerenciarComandaModal({
   }
 
   async function adicionarProduto(produto, observacaoItem = null) {
+    if (produto.disponivel === false) {
+      setErro("Produto indisponível. Atualize a comanda para consultar a disponibilidade.")
+      return
+    }
     setErro("")
     setMensagem("")
     setProcessando(`produto-${produto.id}`)
@@ -594,11 +599,12 @@ function ProdutoCard({
         </p>
       </div>
 
+      {produto.disponivel === false && <p className="mt-2 text-xs font-semibold text-amber-300">Temporariamente indisponível</p>}
       <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
         <button
           type="button"
           onClick={aoAdicionar}
-          disabled={processando}
+          disabled={processando || produto.disponivel === false}
           className="flex items-center justify-center gap-2 rounded-xl bg-orange-600 px-3 py-3 font-semibold text-white transition group-hover:bg-orange-700 disabled:opacity-50"
         >
           {processando ? (
@@ -616,8 +622,8 @@ function ProdutoCard({
         <button
           type="button"
           onClick={aoAdicionarComObservacao}
-          disabled={processando}
-          title="Adicionar com observação"
+          disabled={processando || produto.disponivel === false}
+          title={produto.disponivel === false ? "Produto indisponível" : "Adicionar com observação"}
           className="rounded-xl border border-slate-700 px-3 text-slate-300 transition hover:bg-slate-800 disabled:opacity-50"
         >
           <ChevronDown size={18} />
