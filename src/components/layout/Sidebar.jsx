@@ -9,6 +9,7 @@ import {
   LogOut,
 } from "lucide-react"
 import { useAuth } from "../../hooks/useAuth"
+const logoEspetaria = `${import.meta.env.BASE_URL}logo-espetaria.webp`
 
 export default function Sidebar({
   paginaAtiva,
@@ -57,9 +58,7 @@ export default function Sidebar({
   return (
     <aside className="hidden min-h-screen w-72 flex-col border-r border-slate-800 bg-slate-950 p-4 text-white md:flex">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-orange-500">
-          Comandas Bar
-        </h1>
+        <img src={logoEspetaria} alt="Nova Espetaria Bar" className="mb-3 h-auto w-full max-w-[200px] object-contain" />
 
         <p className="mt-1 text-sm text-slate-400">
           {perfil?.nome}

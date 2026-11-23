@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { BookOpen, ClipboardList, LogOut, UtensilsCrossed } from "lucide-react"
+import { BookOpen, ClipboardList, LogOut } from "lucide-react"
 import { supabase } from "../../lib/supabase"
 import ComandaPage from "./ComandaPage";
 import CardapioPage from "./CardapioPage";
@@ -59,9 +59,7 @@ export default function DashboardGarcom() {
       <header className="sticky top-0 z-30 border-b border-slate-800 bg-slate-950/95 px-4 py-3 backdrop-blur sm:px-6">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="rounded-xl bg-orange-600 p-2.5 text-white">
-              <UtensilsCrossed size={22} />
-            </div>
+            <img src={`${import.meta.env.BASE_URL}logo-espetaria.webp`} alt="Nova Espetaria Bar" className="h-12 w-16 shrink-0 rounded-lg object-cover" />
 
             <div className="min-w-0">
               <h1 className="truncate font-bold text-white">

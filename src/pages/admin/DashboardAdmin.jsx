@@ -39,7 +39,7 @@ export default function DashboardAdmin() {
       <Sidebar paginaAtiva={paginaAtiva} setPaginaAtiva={setPaginaAtiva} />
 
       <div className="min-w-0 flex-1">
-        <Header titulo={titulos[paginaAtiva] ?? "Santo Espetinho"} />
+        <Header titulo={titulos[paginaAtiva] ?? "Nova Espetaria Bar"} />
 
         <main className="p-4 text-white md:p-6">
           {paginaAtiva === "dashboard" && (
