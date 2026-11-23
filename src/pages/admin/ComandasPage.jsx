@@ -1410,7 +1410,7 @@ function PainelMesas({
   }
 
   return (
-    <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+    <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {mesas.map((mesa) => {
         const comanda = obterComanda(mesa.id)
 
@@ -1691,8 +1691,8 @@ function MesaOcupadaCard({
       <div className="h-1.5 bg-orange-500" />
 
       <div className="flex flex-1 flex-col p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div>
+        <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-orange-400">
               Ocupada
             </p>
@@ -1701,16 +1701,16 @@ function MesaOcupadaCard({
               Mesa {mesa.numero}
             </h3>
 
-            <div className="mt-2 flex items-center gap-2 text-sm text-slate-400">
-              <UserRound size={15} />
+            <div className="mt-2 flex min-w-0 items-center gap-2 text-sm text-slate-400">
+              <UserRound size={15} className="shrink-0" />
 
               <span className="truncate">
                 {comanda.cliente || "Cliente não informado"}
               </span>
             </div>
 
-            <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
-              <UserCog size={14} />
+            <div className="mt-1 flex min-w-0 items-center gap-2 text-xs text-slate-500">
+              <UserCog size={14} className="shrink-0" />
               <span className="truncate">Responsável: {nomeResponsavel}</span>
             </div>
           </div>
@@ -1823,7 +1823,7 @@ function TempoMesa({ tempo }) {
         : "border-slate-700 bg-slate-950 text-slate-300"
 
   return (
-    <div className={`rounded-xl border px-3 py-2 text-right ${classe}`}>
+    <div className={`min-w-[100px] shrink-0 rounded-xl border px-3 py-2 text-right ${classe}`}>
       <div className="flex items-center justify-end gap-1.5 text-xs">
         <Clock3 size={14} />
         Aberta há
