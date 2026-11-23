@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabase";
-import logo from "../assets/Santo Espetinho.png";
+const logo = `${import.meta.env.BASE_URL}logo-espetaria.webp`;
 
 function LoginPage() {
   const [usuario, setUsuario] = useState("");
@@ -50,7 +50,7 @@ function LoginPage() {
       <div className="text-center mb-8">
         <img
           src={logo}
-          alt="Santo Espetinho"
+          alt="Nova Espetaria Bar"
           className="w-[220px] h-auto block mx-auto"
         />
 
