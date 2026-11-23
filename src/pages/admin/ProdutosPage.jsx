@@ -17,6 +17,7 @@ const FORMULARIO_INICIAL = {
   preco: "",
   descricao: "",
   ativo: true,
+  disponivel: true,
 }
 
 export default function ProdutosPage() {
@@ -102,6 +103,7 @@ export default function ProdutosPage() {
       preco: formatarValorParaCampo(produto.preco),
       descricao: produto.descricao ?? "",
       ativo: produto.ativo ?? true,
+      disponivel: produto.disponivel ?? true,
     })
 
     setErro("")
@@ -158,6 +160,7 @@ export default function ProdutosPage() {
       preco,
       descricao: formulario.descricao.trim() || null,
       ativo: formulario.ativo,
+      disponivel: formulario.disponivel,
     }
 
     let resultado
@@ -198,6 +201,22 @@ export default function ProdutosPage() {
 
     await carregarDados()
     setSalvando(false)
+  }
+
+  async function alternarDisponibilidade(produto) {
+    setErro("")
+    setMensagem("")
+    const { data, error } = await supabase.rpc("definir_disponibilidade_produto", {
+      p_id: produto.id,
+      p_disponivel: produto.disponivel === false,
+    })
+    if (error || data !== true) {
+      console.error("Erro ao mudar disponibilidade:", error)
+      setErro("Não foi possível alterar a disponibilidade do produto.")
+      return
+    }
+    setMensagem("Disponibilidade atualizada.")
+    await carregarDados()
   }
 
   async function alternarAtivacao(produto) {
@@ -426,6 +445,14 @@ export default function ProdutosPage() {
                       >
                         {produto.ativo ? "Ativo" : "Inativo"}
                       </span>
+                      {produto.ativo && (
+                        <button type="button" onClick={() => alternarDisponibilidade(produto)}
+                          className={`mt-2 block rounded-lg border px-2 py-1 text-xs font-semibold ${produto.disponivel === false
+                            ? "border-amber-500/50 text-amber-300"
+                            : "border-emerald-500/40 text-emerald-300"}`}>
+                          {produto.disponivel === false ? "Indisponível · Alterar" : "Disponível · Alterar"}
+                        </button>
+                      )}
                     </td>
 
                     <td className="px-5 py-4">

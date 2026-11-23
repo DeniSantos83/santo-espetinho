@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react"
-import { LogOut, UtensilsCrossed } from "lucide-react"
+import { BookOpen, ClipboardList, LogOut, UtensilsCrossed } from "lucide-react"
 import { supabase } from "../../lib/supabase"
 import ComandaPage from "./ComandaPage";
+import CardapioPage from "./CardapioPage";
 
 export default function DashboardGarcom() {
   const [nomeUsuario, setNomeUsuario] = useState("Garçom")
   const [saindo, setSaindo] = useState(false)
+  const [abaAtiva, setAbaAtiva] = useState("mesas")
 
   useEffect(() => {
     carregarUsuario()
@@ -44,7 +46,7 @@ export default function DashboardGarcom() {
 
       if (error) throw error
 
-      window.location.href = "/"
+      window.location.href = import.meta.env.BASE_URL
     } catch (erro) {
       console.error("Erro ao sair:", erro)
       alert("Não foi possível sair do sistema.")
@@ -63,7 +65,7 @@ export default function DashboardGarcom() {
 
             <div className="min-w-0">
               <h1 className="truncate font-bold text-white">
-                Santo Espetinho
+                Nova Espetaria Bar
               </h1>
 
               <p className="truncate text-xs text-slate-400">
@@ -86,8 +88,20 @@ export default function DashboardGarcom() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl p-4 sm:p-6">
-        <ComandaPage />
+      <main className="mx-auto max-w-7xl px-3 py-4 sm:p-6">
+        <nav aria-label="Menu do garçom" className="mb-4 grid grid-cols-2 gap-2 rounded-2xl border border-slate-800 bg-slate-900 p-1.5 sm:max-w-md">
+          <button type="button" onClick={() => setAbaAtiva("mesas")}
+            aria-current={abaAtiva === "mesas" ? "page" : undefined}
+            className={`flex min-h-12 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition ${abaAtiva === "mesas" ? "bg-orange-600 text-white" : "text-slate-300 hover:bg-slate-800"}`}>
+            <ClipboardList size={18} /> Mesas e pedidos
+          </button>
+          <button type="button" onClick={() => setAbaAtiva("cardapio")}
+            aria-current={abaAtiva === "cardapio" ? "page" : undefined}
+            className={`flex min-h-12 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition ${abaAtiva === "cardapio" ? "bg-orange-600 text-white" : "text-slate-300 hover:bg-slate-800"}`}>
+            <BookOpen size={18} /> Cardápio
+          </button>
+        </nav>
+        {abaAtiva === "mesas" ? <ComandaPage /> : <CardapioPage />}
       </main>
 
       <div className="h-6" />
