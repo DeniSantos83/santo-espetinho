@@ -1,12 +1,14 @@
 import { useState } from "react"
-import { ClipboardList, LogOut, RefreshCw, UtensilsCrossed } from "lucide-react"
+import { ClipboardList, LogOut, Package, RefreshCw } from "lucide-react"
 import { useAuth } from "../../hooks/useAuth"
 import ComandasPage from "../admin/ComandasPage"
+import DisponibilidadeProdutosPage from "./DisponibilidadeProdutosPage"
 import { supabase } from "../../lib/supabase"
 
 export default function DashboardGerente() {
   const { perfil, sair } = useAuth()
   const [saindo, setSaindo] = useState(false)
+  const [abaAtiva, setAbaAtiva] = useState("comandas")
 
   async function encerrarSessao() {
     if (saindo) return
@@ -48,16 +50,19 @@ export default function DashboardGerente() {
         </div>
       </header>
       <main className="mx-auto max-w-7xl p-3 sm:p-6">
-        <div className="mb-5 rounded-2xl border border-slate-800 bg-slate-900 px-4 py-4 sm:px-6">
-          <p className="text-xs font-semibold uppercase tracking-widest text-orange-400">Operação do bar</p>
-          <h2 className="mt-1 flex items-center gap-2 text-2xl font-bold">
-            <ClipboardList size={24} className="text-orange-400" /> Comandas e caixa
-          </h2>
-          <p className="mt-1 text-sm text-slate-400">
-            Consulte mesas, confira a pré-conta e encerre as comandas após receber o pagamento.
-          </p>
-        </div>
-        <ComandasPage />
+        <nav aria-label="Menu da gerência" className="mb-5 flex flex-wrap gap-2 rounded-2xl border border-slate-800 bg-slate-900 p-2">
+          <button type="button" onClick={() => setAbaAtiva("comandas")}
+            aria-current={abaAtiva === "comandas" ? "page" : undefined}
+            className={`flex min-h-12 items-center gap-2 rounded-xl px-4 text-sm font-semibold transition ${abaAtiva === "comandas" ? "bg-orange-600 text-white" : "text-slate-300 hover:bg-slate-800"}`}>
+            <ClipboardList size={18} /> Comandas e caixa
+          </button>
+          <button type="button" onClick={() => setAbaAtiva("produtos")}
+            aria-current={abaAtiva === "produtos" ? "page" : undefined}
+            className={`flex min-h-12 items-center gap-2 rounded-xl px-4 text-sm font-semibold transition ${abaAtiva === "produtos" ? "bg-orange-600 text-white" : "text-slate-300 hover:bg-slate-800"}`}>
+            <Package size={18} /> Disponibilidade dos produtos
+          </button>
+        </nav>
+        {abaAtiva === "comandas" ? <ComandasPage /> : <DisponibilidadeProdutosPage />}
       </main>
     </div>
   )
