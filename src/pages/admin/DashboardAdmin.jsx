@@ -20,6 +20,7 @@ import UsuariosPage from "./UsuariosPage"
 import ComandasPage from "./ComandasPage"
 import CategoriasPage from "./CategoriasPage"
 import { supabase } from "../../lib/supabase"
+import RelatoriosPage from "../shared/RelatoriosPage"
 
 export default function DashboardAdmin() {
   const [paginaAtiva, setPaginaAtiva] = useState("dashboard")
@@ -52,9 +53,7 @@ export default function DashboardAdmin() {
           {paginaAtiva === "categorias" && <CategoriasPage />}
           {paginaAtiva === "comandas" && <ComandasPage />}
 
-          {paginaAtiva === "relatorios" && (
-            <PaginaTemporaria texto="Relatórios" />
-          )}
+          {paginaAtiva === "relatorios" && <RelatoriosPage />}
         </main>
       </div>
     </div>
@@ -572,15 +571,6 @@ function EstadoVazio({ icone: Icone, titulo, texto }) {
       <Icone size={36} className="text-slate-600" />
       <p className="mt-3 font-semibold text-slate-300">{titulo}</p>
       <p className="mt-1 text-sm text-slate-500">{texto}</p>
-    </div>
-  )
-}
-
-function PaginaTemporaria({ texto }) {
-  return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-      <h3 className="text-xl font-bold">{texto}</h3>
-      <p className="mt-2 text-slate-400">Em construção.</p>
     </div>
   )
 }
