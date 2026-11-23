@@ -15,16 +15,27 @@ function LoginPage() {
     setCarregando(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke("login-usuario", {
-        body: { usuario: usuario.trim().toLowerCase(), senha },
-      });
-      if (error || !data?.access_token || !data?.refresh_token)
-        throw new Error("Usuário ou senha inválidos.");
-      const { error: erroSessao } = await supabase.auth.setSession({
-        access_token: data.access_token,
-        refresh_token: data.refresh_token,
-      });
-      if (erroSessao) throw erroSessao;
+      const identificador = usuario.trim().toLowerCase();
+      if (identificador.includes("@")) {
+        // Compatibilidade durante a migração: contas antigas ainda podem
+        // acessar usando e-mail, mesmo sem o campo de e-mail na interface.
+        const { error: erroEmail } = await supabase.auth.signInWithPassword({
+          email: identificador,
+          password: senha,
+        });
+        if (erroEmail) throw erroEmail;
+      } else {
+        const { data, error } = await supabase.functions.invoke("login-usuario", {
+          body: { usuario: identificador, senha },
+        });
+        if (error || !data?.access_token || !data?.refresh_token)
+          throw new Error("Usuário ou senha inválidos.");
+        const { error: erroSessao } = await supabase.auth.setSession({
+          access_token: data.access_token,
+          refresh_token: data.refresh_token,
+        });
+        if (erroSessao) throw erroSessao;
+      }
     } catch {
       setErro("Usuário ou senha inválidos.");
     } finally {
