@@ -57,7 +57,6 @@ export function AuthProvider({ children }) {
       if (event !== "INITIAL_SESSION" && event !== "SIGNED_IN" &&
           event !== "SIGNED_OUT" && event !== "USER_UPDATED") return
 
-      const proximoId = session?.user?.id ?? null
       // Um SIGNED_IN repetido não deve interromper uma consulta de perfil em andamento.
       revisaoRef.current += 1
       const revisao = revisaoRef.current
