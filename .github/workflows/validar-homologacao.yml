@@ -1,0 +1,29 @@
+name: Validar homologacao
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches:
+      - homologacao/login-usuario-cardapio-20261123
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Instalar dependencias
+        run: npm ci --no-audit --no-fund
+      - name: Analisar codigo
+        run: npm run lint
+      - name: Compilar aplicacao
+        run: npm run build
