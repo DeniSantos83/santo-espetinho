@@ -9,10 +9,11 @@ import {
   X,
 } from "lucide-react"
 import { supabase } from "../../lib/supabase"
+import { useAuth } from "../../hooks/useAuth"
 
 const FORMULARIO_INICIAL = {
   nome: "",
-  email: "",
+  login: "",
   telefone: "",
   senha: "",
   confirmarSenha: "",
@@ -21,6 +22,7 @@ const FORMULARIO_INICIAL = {
 }
 
 export default function UsuariosPage() {
+  const { usuarioAuth } = useAuth()
   const [usuarios, setUsuarios] = useState([])
   const [formulario, setFormulario] = useState(FORMULARIO_INICIAL)
   const [usuarioEditando, setUsuarioEditando] = useState(null)
@@ -71,7 +73,7 @@ export default function UsuariosPage() {
 
     setFormulario({
       nome: usuario.nome ?? "",
-      email: usuario.email ?? "",
+      login: usuario.login ?? "",
       telefone: usuario.telefone ?? "",
       senha: "",
       confirmarSenha: "",
@@ -108,7 +110,7 @@ export default function UsuariosPage() {
     setMensagem("")
 
     const nome = formulario.nome.trim()
-    const email = formulario.email.trim().toLowerCase()
+    const login = formulario.login.trim().toLowerCase()
     const telefone = formulario.telefone.trim()
     const senha = formulario.senha
     const confirmarSenha = formulario.confirmarSenha
@@ -118,14 +120,14 @@ export default function UsuariosPage() {
       return
     }
 
-    if (!email) {
-      setErro("Informe o e-mail do usuário.")
+    if (!/^[a-z][a-z0-9_]{2,23}$/.test(login)) {
+      setErro("Login inválido: 3 a 24 caracteres, começando por letra.")
       return
     }
 
     if (!usuarioEditando) {
-      if (senha.length < 6) {
-        setErro("A senha inicial deve possuir pelo menos 6 caracteres.")
+      if (senha.length < 8) {
+        setErro("A senha inicial deve possuir pelo menos 8 caracteres.")
         return
       }
 
@@ -139,10 +141,17 @@ export default function UsuariosPage() {
 
     try {
       if (usuarioEditando) {
+        if (senha && usuarioEditando.auth_id !== usuarioAuth?.id) {
+          throw new Error("Somente o próprio funcionário pode alterar sua senha aqui. Para outros usuários, use o painel Supabase Auth.")
+        }
+        if (senha && (senha.length < 8 || senha !== confirmarSenha)) {
+          throw new Error("Informe uma senha com 8 caracteres ou mais e confira a confirmação.")
+        }
         const { error } = await supabase
           .from("usuarios")
           .update({
             nome,
+            login,
             telefone: telefone || null,
             perfil: formulario.perfil,
             ativo: formulario.ativo,
@@ -150,18 +159,24 @@ export default function UsuariosPage() {
           .eq("id", usuarioEditando.id)
 
         if (error) throw error
-
+        if (senha) {
+          const { error: erroSenha } = await supabase.auth.updateUser({ password: senha })
+          if (erroSenha) throw erroSenha
+        }
         setMensagem("Usuário atualizado com sucesso.")
       } else {
+        // Compatibilidade com a função existente, que cadastra contas por e-mail interno.
+        const emailInterno = `${login}@usuarios.novaespetaria.example.com`
+        const perfilInicial = formulario.perfil === "admin" ? "gerente" : formulario.perfil
         const { data, error } = await supabase.functions.invoke(
           "criar-usuario",
           {
             body: {
               nome,
-              email,
+              email: emailInterno,
               telefone: telefone || null,
               senha,
-              perfil: formulario.perfil,
+              perfil: perfilInicial,
               ativo: formulario.ativo,
             },
           }
@@ -184,6 +199,12 @@ export default function UsuariosPage() {
           throw new Error(data?.erro || "Não foi possível cadastrar o usuário.")
         }
 
+        if (!data?.usuario?.id) throw new Error("Conta criada, mas sem confirmação do cadastro.")
+        const { error: erroVinculo } = await supabase
+          .from("usuarios")
+          .update({ login, perfil: formulario.perfil })
+          .eq("id", data.usuario.id)
+        if (erroVinculo) throw new Error("Conta criada, mas não foi possível vincular o login. Revise antes de tentar novamente.")
         setMensagem(
           `${nome} foi cadastrado com o perfil de ${formatarPerfil(
             formulario.perfil
@@ -239,7 +260,7 @@ export default function UsuariosPage() {
       const correspondeBusca =
         !termo ||
         usuario.nome?.toLowerCase().includes(termo) ||
-        usuario.email?.toLowerCase().includes(termo)
+        usuario.login?.toLowerCase().includes(termo)
 
       const correspondePerfil =
         filtroPerfil === "todos" || usuario.perfil === filtroPerfil
@@ -310,7 +331,7 @@ export default function UsuariosPage() {
             type="search"
             value={busca}
             onChange={(evento) => setBusca(evento.target.value)}
-            placeholder="Buscar por nome ou e-mail..."
+            placeholder="Buscar por nome ou login..."
             className="w-full rounded-xl border border-slate-700 bg-slate-950 py-3 pl-11 pr-4 text-white outline-none placeholder:text-slate-600 focus:border-orange-500"
           />
         </div>
@@ -376,7 +397,7 @@ export default function UsuariosPage() {
                     <td className="px-5 py-4">
                       <p className="font-semibold text-white">{usuario.nome}</p>
                       <p className="mt-1 text-sm text-slate-400">
-                        {usuario.email}
+                        @{usuario.login || "sem-login"}
                       </p>
                     </td>
 
@@ -433,6 +454,7 @@ export default function UsuariosPage() {
 
       {modalAberto && (
         <ModalUsuario
+          proprioUsuario={usuarioEditando?.auth_id === usuarioAuth?.id}
           formulario={formulario}
           usuarioEditando={usuarioEditando}
           salvando={salvando}
@@ -456,6 +478,7 @@ function CardResumo({ titulo, valor }) {
 }
 
 function ModalUsuario({
+  proprioUsuario,
   formulario,
   usuarioEditando,
   salvando,
@@ -505,25 +528,27 @@ function ModalUsuario({
 
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-300">
-              E-mail *
+              Login *
             </label>
 
             <input
-              name="email"
-              type="email"
-              value={formulario.email}
+              name="login"
+              type="text"
+              value={formulario.login}
               onChange={aoAtualizarCampo}
-              disabled={Boolean(usuarioEditando)}
               required
+              minLength={3}
+              maxLength={24}
+              autoComplete="username"
               className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-orange-500 disabled:cursor-not-allowed disabled:opacity-60"
             />
           </div>
 
-          {!usuarioEditando && (
+          {(!usuarioEditando || proprioUsuario) && (
             <>
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-300">
-                  Senha inicial *
+                  {usuarioEditando ? "Alterar minha senha (opcional)" : "Senha inicial *"}
                 </label>
 
                 <input
@@ -531,10 +556,10 @@ function ModalUsuario({
                   type="password"
                   value={formulario.senha}
                   onChange={aoAtualizarCampo}
-                  minLength={6}
+                  minLength={8}
                   autoComplete="new-password"
-                  required
-                  placeholder="Mínimo de 6 caracteres"
+                  required={!usuarioEditando}
+                  placeholder="Mínimo de 8 caracteres"
                   className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-orange-500"
                 />
               </div>
@@ -549,9 +574,9 @@ function ModalUsuario({
                   type="password"
                   value={formulario.confirmarSenha}
                   onChange={aoAtualizarCampo}
-                  minLength={6}
+                  minLength={8}
                   autoComplete="new-password"
-                  required
+                  required={!usuarioEditando}
                   className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-orange-500"
                 />
               </div>
