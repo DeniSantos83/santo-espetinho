@@ -299,21 +299,22 @@ export default function ProdutosPage() {
   const quantidadeInativos = produtos.length - quantidadeAtivos
 
   return (
-    <section>
+    <section className="space-y-0 pb-8 [font-family:inherit]">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white">Produtos</h2>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-400">Cardápio e vendas</p>
+          <h2 className="mt-1 text-3xl font-bold tracking-tight text-white">Produtos</h2>
           <p className="mt-1 text-sm text-slate-400">
             Cadastre espetinhos, bebidas, petiscos e outros itens.
           </p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={carregarDados}
             disabled={carregando}
-            className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 font-semibold text-slate-200 transition hover:bg-slate-800 disabled:opacity-50"
+            className="flex items-center gap-2 min-h-11 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 font-semibold text-slate-200 transition hover:border-slate-500 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400 disabled:opacity-50"
           >
             <RefreshCw
               size={18}
@@ -326,7 +327,7 @@ export default function ProdutosPage() {
             type="button"
             onClick={abrirCadastro}
             disabled={categorias.length === 0}
-            className="flex items-center gap-2 rounded-xl bg-orange-600 px-4 py-3 font-semibold text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex items-center gap-2 min-h-11 rounded-xl bg-orange-600 px-4 py-3 font-semibold text-white shadow-sm shadow-orange-950/30 transition hover:bg-orange-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <CirclePlus size={20} />
             Novo produto
@@ -334,7 +335,7 @@ export default function ProdutosPage() {
         </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <CardResumo titulo="Total de produtos" valor={produtos.length} />
         <CardResumo titulo="Produtos ativos" valor={quantidadeAtivos} />
         <CardResumo titulo="Produtos inativos" valor={quantidadeInativos} />
@@ -352,14 +353,14 @@ export default function ProdutosPage() {
             value={busca}
             onChange={(evento) => setBusca(evento.target.value)}
             placeholder="Buscar produto..."
-            className="w-full rounded-xl border border-slate-700 bg-slate-950 py-3 pl-11 pr-4 text-white outline-none placeholder:text-slate-600 focus:border-orange-500"
+            className="w-full rounded-xl border border-slate-700 bg-slate-950 py-3 pl-11 pr-4 text-white outline-none placeholder:text-slate-600 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
           />
         </div>
 
         <select
           value={filtroCategoria}
           onChange={(evento) => setFiltroCategoria(evento.target.value)}
-          className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-orange-500"
+          className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
         >
           <option value="todas">Todas as categorias</option>
 
@@ -383,6 +384,8 @@ export default function ProdutosPage() {
         </div>
       )}
 
+      <p role="status" className="mt-3 text-sm text-slate-400">Exibindo {produtosFiltrados.length} de {produtos.length} produtos</p>
+
       {carregando ? (
         <div className="mt-6 flex min-h-48 items-center justify-center rounded-2xl border border-slate-800 bg-slate-900 text-slate-400">
           <RefreshCw className="mr-2 animate-spin" size={20} />
@@ -403,7 +406,7 @@ export default function ProdutosPage() {
       ) : (
         <div className="mt-6 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
           <div className="overflow-x-auto">
-            <table className="min-w-full">
+            <table className="min-w-[760px] w-full text-sm">
               <thead className="bg-slate-950/70">
                 <tr className="text-left text-xs uppercase tracking-wide text-slate-400">
                   <th className="px-5 py-4">Produto</th>
@@ -416,7 +419,7 @@ export default function ProdutosPage() {
 
               <tbody className="divide-y divide-slate-800">
                 {produtosFiltrados.map((produto) => (
-                  <tr key={produto.id} className="hover:bg-slate-800/40">
+                  <tr key={produto.id} className="transition-colors hover:bg-slate-800/50">
                     <td className="px-5 py-4">
                       <p className="font-semibold text-white">{produto.nome}</p>
 
@@ -506,7 +509,7 @@ export default function ProdutosPage() {
 
 function CardResumo({ titulo, valor }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+    <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5 shadow-sm shadow-black/10">
       <p className="text-sm text-slate-400">{titulo}</p>
       <p className="mt-2 text-3xl font-bold text-white">{valor}</p>
     </div>
@@ -578,7 +581,7 @@ function ModalProduto({
               placeholder="Ex.: Espetinho de carne"
               required
               autoFocus
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-600 focus:border-orange-500"
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-600 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
             />
           </div>
 
@@ -593,7 +596,7 @@ function ModalProduto({
                 value={formulario.categoria_id}
                 onChange={aoAtualizarCampo}
                 required
-                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-orange-500"
+                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
               >
                 <option value="">Selecione</option>
 
@@ -618,7 +621,7 @@ function ModalProduto({
                 onChange={aoAtualizarCampo}
                 placeholder="Ex.: 8,00"
                 required
-                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-600 focus:border-orange-500"
+                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-600 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
               />
             </div>
           </div>
@@ -635,7 +638,7 @@ function ModalProduto({
               value={formulario.descricao}
               onChange={aoAtualizarCampo}
               placeholder="Informações opcionais sobre o produto"
-              className="w-full resize-none rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-600 focus:border-orange-500"
+              className="w-full resize-none rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-600 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
             />
           </div>
 
@@ -675,7 +678,7 @@ function ModalProduto({
             <button
               type="submit"
               disabled={salvando}
-              className="rounded-xl bg-orange-600 px-5 py-3 font-semibold text-white transition hover:bg-orange-700 disabled:opacity-60"
+              className="min-h-11 rounded-xl bg-orange-600 px-5 py-3 font-semibold text-white shadow-sm shadow-orange-950/30 transition hover:bg-orange-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400 disabled:opacity-60"
             >
               {salvando
                 ? "Salvando..."

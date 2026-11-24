@@ -24,6 +24,7 @@ import RelatoriosPage from "../shared/RelatoriosPage"
 
 export default function DashboardAdmin() {
   const [paginaAtiva, setPaginaAtiva] = useState("dashboard")
+  const [menuAberto, setMenuAberto] = useState(false)
 
   const titulos = {
     dashboard: "Dashboard",
@@ -36,13 +37,13 @@ export default function DashboardAdmin() {
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-950">
-      <Sidebar paginaAtiva={paginaAtiva} setPaginaAtiva={setPaginaAtiva} />
+    <div className="flex min-h-screen bg-[#0a101b]">
+      <Sidebar paginaAtiva={paginaAtiva} setPaginaAtiva={setPaginaAtiva} aberto={menuAberto} aoFechar={() => setMenuAberto(false)} />
 
       <div className="min-w-0 flex-1">
-        <Header titulo={titulos[paginaAtiva] ?? "Nova Espetaria Bar"} />
+        <Header titulo={titulos[paginaAtiva] ?? "Nova Espetaria Bar"} aoAbrirMenu={() => setMenuAberto(true)} />
 
-        <main className="p-4 text-white md:p-6">
+        <main className="mx-auto w-full max-w-[1600px] p-4 text-white sm:p-6 xl:p-8">
           {paginaAtiva === "dashboard" && (
             <DashboardResumo setPaginaAtiva={setPaginaAtiva} />
           )}
@@ -233,14 +234,14 @@ function DashboardResumo({ setPaginaAtiva }) {
   }
 
   return (
-    <section>
+    <section className="space-y-1">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-orange-400">
             Visão geral
           </p>
 
-          <h2 className="mt-1 text-3xl font-bold text-white">
+          <h2 className="mt-1 text-3xl font-bold tracking-tight text-white sm:text-4xl">
             Movimento de hoje
           </h2>
 
@@ -253,7 +254,7 @@ function DashboardResumo({ setPaginaAtiva }) {
           <button
             type="button"
             onClick={() => setPaginaAtiva("comandas")}
-            className="flex items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 py-3 font-semibold text-white transition hover:bg-orange-700"
+            className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 py-3 font-semibold text-white transition hover:bg-orange-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400"
           >
             <ShoppingCart size={19} />
             Ir para comandas
@@ -262,7 +263,7 @@ function DashboardResumo({ setPaginaAtiva }) {
           <button
             type="button"
             onClick={() => carregarDashboard()}
-            className="flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 font-semibold text-slate-200 transition hover:bg-slate-800"
+            className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[.045] px-4 py-3 font-semibold text-slate-200 transition hover:bg-white/10"
           >
             <RefreshCw size={18} />
             Atualizar
@@ -287,7 +288,7 @@ function DashboardResumo({ setPaginaAtiva }) {
         </div>
       )}
 
-      <div className="mt-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
         <CardResumo
           titulo="Faturamento hoje"
           valor={formatarMoeda(faturamentoHoje)}
@@ -321,7 +322,7 @@ function DashboardResumo({ setPaginaAtiva }) {
         />
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-5 2xl:grid-cols-[1.35fr_0.65fr]">
+      <div className="mt-6 grid grid-cols-1 gap-5 2xl:grid-cols-[minmax(0,1.35fr)_minmax(0,0.65fr)]">
         <div className="rounded-2xl border border-slate-800 bg-slate-900">
           <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4">
             <div>

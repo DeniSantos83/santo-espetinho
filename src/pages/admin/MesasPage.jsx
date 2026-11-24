@@ -235,22 +235,23 @@ export default function MesasPage() {
   ).length
 
   return (
-    <section>
+    <section className="space-y-0 pb-8 [font-family:inherit]">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white">Mesas</h2>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-400">Gestão do salão</p>
+          <h2 className="mt-1 text-3xl font-bold tracking-tight text-white">Mesas</h2>
 
           <p className="mt-1 text-sm text-slate-400">
             Cadastre e gerencie as mesas do estabelecimento.
           </p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={carregarMesas}
             disabled={carregando}
-            className="flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 font-semibold text-slate-200 transition hover:bg-slate-800 disabled:opacity-50"
+            className="flex items-center justify-center gap-2 min-h-11 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 font-semibold text-slate-200 transition hover:border-slate-500 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400 disabled:opacity-50"
           >
             <RefreshCw
               size={18}
@@ -263,7 +264,7 @@ export default function MesasPage() {
           <button
             type="button"
             onClick={abrirCadastro}
-            className="flex items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-3 font-semibold text-white transition hover:bg-orange-700"
+            className="flex items-center justify-center gap-2 min-h-11 rounded-xl bg-orange-600 px-4 py-3 font-semibold text-white shadow-sm shadow-orange-950/30 transition hover:bg-orange-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400"
           >
             <CirclePlus size={20} />
             Nova mesa
@@ -307,7 +308,7 @@ export default function MesasPage() {
           </p>
         </div>
       ) : (
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {mesas.map((mesa) => (
             <CardMesa
               key={mesa.id}
@@ -337,7 +338,7 @@ export default function MesasPage() {
 
 function CardResumo({ titulo, valor }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+    <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5 shadow-sm shadow-black/10">
       <p className="text-sm text-slate-400">{titulo}</p>
       <p className="mt-2 text-3xl font-bold text-white">{valor}</p>
     </div>
@@ -372,8 +373,8 @@ function CardMesa({
           : "border-slate-800 opacity-70"
       }`}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <div className="rounded-xl bg-slate-800 p-3 text-orange-400">
             <Armchair size={24} />
           </div>
@@ -390,17 +391,17 @@ function CardMesa({
         </div>
 
         <span
-          className={`rounded-full border px-3 py-1 text-xs font-semibold ${estiloStatus}`}
+          className={`shrink-0 rounded-full border px-3 py-1 text-xs font-semibold ${estiloStatus}`}
         >
           {textoStatus}
         </span>
       </div>
 
-      <div className="mt-5 grid grid-cols-3 gap-2 border-t border-slate-800 pt-4">
+      <div className="mt-5 grid grid-cols-1 gap-2 border-t border-slate-800 pt-4 min-[430px]:grid-cols-3">
         <button
           type="button"
           onClick={() => aoEditar(mesa)}
-          className="flex items-center justify-center gap-1 rounded-lg px-2 py-2 text-sm text-blue-300 transition hover:bg-blue-500/10"
+          className="flex min-h-10 items-center justify-center gap-1 rounded-lg border border-slate-700/70 px-2 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-400 text-blue-300 transition hover:bg-blue-500/10"
         >
           <Pencil size={16} />
           Editar
@@ -409,7 +410,7 @@ function CardMesa({
         <button
           type="button"
           onClick={() => aoAlternarAtivacao(mesa)}
-          className="flex items-center justify-center gap-1 rounded-lg px-2 py-2 text-sm text-amber-300 transition hover:bg-amber-500/10"
+          className="flex min-h-10 items-center justify-center gap-1 rounded-lg border border-slate-700/70 px-2 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-400 text-amber-300 transition hover:bg-amber-500/10"
         >
           <Power size={16} />
           {mesa.ativa ? "Desativar" : "Ativar"}
@@ -418,7 +419,7 @@ function CardMesa({
         <button
           type="button"
           onClick={() => aoExcluir(mesa)}
-          className="flex items-center justify-center gap-1 rounded-lg px-2 py-2 text-sm text-red-300 transition hover:bg-red-500/10"
+          className="flex min-h-10 items-center justify-center gap-1 rounded-lg border border-slate-700/70 px-2 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-400 text-red-300 transition hover:bg-red-500/10"
         >
           <Trash2 size={16} />
           Excluir
@@ -480,7 +481,7 @@ function ModalMesa({
               placeholder="Ex.: 1"
               required
               autoFocus
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-orange-500"
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
             />
           </div>
 
@@ -500,7 +501,7 @@ function ModalMesa({
               value={formulario.nome}
               onChange={aoAtualizarCampo}
               placeholder="Ex.: Área externa"
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-orange-500"
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
             />
           </div>
 
@@ -517,7 +518,7 @@ function ModalMesa({
               name="status"
               value={formulario.status}
               onChange={aoAtualizarCampo}
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-orange-500"
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
             >
               <option value="livre">Livre</option>
               <option value="ocupada">Ocupada</option>
@@ -561,7 +562,7 @@ function ModalMesa({
             <button
               type="submit"
               disabled={salvando}
-              className="rounded-xl bg-orange-600 px-5 py-3 font-semibold text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="min-h-11 rounded-xl bg-orange-600 px-5 py-3 font-semibold text-white shadow-sm shadow-orange-950/30 transition hover:bg-orange-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {salvando
                 ? "Salvando..."
