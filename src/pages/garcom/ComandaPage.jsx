@@ -731,7 +731,7 @@ function ModalPreConta({ comanda, mesa, itens, aoFechar }) {
         </div>
 
         <div className="p-5 text-white">
-          <h3 className="text-center text-xl font-bold">Santo Espetinho</h3>
+          <h3 className="text-center text-xl font-bold">Nova Espetaria Bar</h3>
           <p className="mt-1 text-center text-sm text-slate-400">
             {mesa} • {comanda.cliente || "Cliente não informado"}
           </p>
