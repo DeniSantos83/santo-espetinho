@@ -33,6 +33,7 @@ export default function GerenciarComandaModal({
   const [processando, setProcessando] = useState(null)
   const [erro, setErro] = useState("")
   const [mensagem, setMensagem] = useState("")
+  const [mostrarItensMobile, setMostrarItensMobile] = useState(false)
 
   useEffect(() => {
     carregarDados()
@@ -310,11 +311,11 @@ export default function GerenciarComandaModal({
   )
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 p-0 sm:p-4">
-      <div className="mx-auto flex h-full w-full max-w-7xl flex-col overflow-hidden bg-slate-950 sm:h-[calc(100vh-2rem)] sm:rounded-2xl sm:border sm:border-slate-700">
-        <header className="flex items-center justify-between border-b border-slate-800 bg-slate-900 px-4 py-4 sm:px-6">
+    <div className="fixed inset-0 z-50 bg-black/85 p-0 sm:p-4">
+      <div role="dialog" aria-modal="true" aria-labelledby="gerenciar-comanda-titulo" className="mx-auto flex h-full w-full max-w-7xl flex-col overflow-hidden bg-slate-950 sm:h-[calc(100dvh-2rem)] sm:rounded-3xl sm:border sm:border-slate-700">
+        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-800 bg-slate-900 px-4 py-4 sm:px-6">
           <div className="min-w-0">
-            <h2 className="truncate text-xl font-bold text-white">
+            <h2 id="gerenciar-comanda-titulo" className="truncate text-xl font-bold tracking-tight text-white">
               Gerenciar comanda
             </h2>
 
@@ -329,15 +330,15 @@ export default function GerenciarComandaModal({
           <button
             type="button"
             onClick={aoFechar}
-            className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-800 hover:text-white"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-700 p-2 text-slate-300 transition hover:bg-slate-800 hover:text-white"
             aria-label="Fechar gerenciamento da comanda"
           >
             <X size={24} />
           </button>
         </header>
 
-        <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[1fr_390px]">
-          <main className="min-h-0 overflow-y-auto p-4 sm:p-6">
+        <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(330px,390px)]">
+          <main className="min-h-0 min-w-0 overflow-y-auto p-4 pb-24 sm:p-6 lg:pb-6">
             <div className="relative">
               <Search
                 size={18}
@@ -350,12 +351,13 @@ export default function GerenciarComandaModal({
                 onChange={(evento) =>
                   setBusca(evento.target.value)
                 }
+                aria-label="Pesquisar produto"
                 placeholder="Pesquisar produto..."
                 className="w-full rounded-xl border border-slate-700 bg-slate-900 py-3 pl-11 pr-4 text-white outline-none placeholder:text-slate-600 focus:border-orange-500"
               />
             </div>
 
-            <div className="mt-3 flex gap-2 overflow-x-auto pb-2">
+            <div aria-label="Categorias dos produtos" className="mt-3 flex gap-2 overflow-x-auto pb-2">
               <button
                 type="button"
                 onClick={() => setCategoriaSelecionada("todas")}
@@ -431,7 +433,7 @@ export default function GerenciarComandaModal({
                         {categoria}
                       </h3>
 
-                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+                      <div className="grid grid-cols-1 gap-3 min-[440px]:grid-cols-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                         {produtosCategoria.map((produto) => (
                           <ProdutoCard
                             key={produto.id}
@@ -456,7 +458,8 @@ export default function GerenciarComandaModal({
             )}
           </main>
 
-          <aside className="flex min-h-0 flex-col border-t border-slate-800 bg-slate-900 lg:border-l lg:border-t-0">
+          {mostrarItensMobile && <button type="button" aria-label="Fechar painel de itens" onClick={() => setMostrarItensMobile(false)} className="fixed inset-0 z-[55] bg-black/70 lg:hidden" />}
+          <aside aria-label="Itens da comanda" className={`${mostrarItensMobile ? "fixed inset-x-0 bottom-0 z-[56] flex max-h-[88dvh] rounded-t-3xl shadow-2xl" : "hidden"} min-h-0 flex-col border-t border-slate-700 bg-slate-900 lg:static lg:z-auto lg:flex lg:max-h-none lg:rounded-none lg:border-l lg:border-t-0 lg:shadow-none`}>
             <div className="border-b border-slate-800 px-5 py-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -472,6 +475,7 @@ export default function GerenciarComandaModal({
                   </p>
                 </div>
 
+                <button type="button" onClick={() => setMostrarItensMobile(false)} aria-label="Voltar aos produtos" className="rounded-lg border border-slate-700 p-2 text-slate-300 lg:hidden"><X size={18}/></button>
                 <button
                   type="button"
                   onClick={carregarDados}
@@ -531,13 +535,13 @@ export default function GerenciarComandaModal({
               )}
             </div>
 
-            <div className="border-t border-slate-800 bg-slate-950/50 p-5">
+            <div className="shrink-0 border-t border-slate-800 bg-slate-950 p-4 sm:p-5">
               <div className="flex items-center justify-between gap-4">
                 <span className="font-medium text-slate-400">
                   Total da comanda
                 </span>
 
-                <strong className="text-3xl text-emerald-300">
+                <strong className="text-2xl font-extrabold text-emerald-300 sm:text-3xl">
                   {formatarMoeda(totalComanda)}
                 </strong>
               </div>
@@ -545,13 +549,19 @@ export default function GerenciarComandaModal({
               <button
                 type="button"
                 onClick={aoFechar}
-                className="mt-4 w-full rounded-xl bg-orange-600 px-4 py-3 font-bold text-white transition hover:bg-orange-700"
+                className="mt-4 min-h-12 w-full rounded-xl bg-orange-600 px-4 py-3 font-bold text-white transition hover:bg-orange-500"
               >
                 Concluir lançamento
               </button>
             </div>
           </aside>
         </div>
+        <button type="button" onClick={() => setMostrarItensMobile(true)}
+          aria-label={`Ver comanda com ${quantidadeTotalItens} produtos, total ${formatarMoeda(totalComanda)}`}
+          className="flex shrink-0 items-center justify-between gap-3 border-t border-orange-500/30 bg-orange-600 px-4 py-3 text-left text-white lg:hidden">
+          <span className="flex items-center gap-3"><ShoppingCart size={21}/><span><strong className="block text-sm">Ver comanda</strong><span className="text-xs text-orange-100">{quantidadeTotalItens} itens</span></span></span>
+          <span className="flex items-center gap-2 font-extrabold">{formatarMoeda(totalComanda)} <ChevronDown className="rotate-180" size={17}/></span>
+        </button>
       </div>
 
       {produtoComObservacao && (
@@ -578,7 +588,7 @@ function ProdutoCard({
   aoAdicionarComObservacao,
 }) {
   return (
-    <article className="group flex min-h-48 flex-col rounded-2xl border border-slate-800 bg-slate-900 p-4 transition hover:-translate-y-0.5 hover:border-orange-500/50 hover:shadow-xl hover:shadow-orange-950/20">
+    <article className="group flex min-h-44 flex-col rounded-2xl border border-slate-700/70 bg-slate-900 p-4 transition hover:border-orange-500/50 hover:shadow-lg hover:shadow-orange-950/20">
       <div className="flex-1">
         <p className="font-bold text-white">
           {produto.nome}
@@ -605,7 +615,7 @@ function ProdutoCard({
           type="button"
           onClick={aoAdicionar}
           disabled={processando || produto.disponivel === false}
-          className="flex items-center justify-center gap-2 rounded-xl bg-orange-600 px-3 py-3 font-semibold text-white transition group-hover:bg-orange-700 disabled:opacity-50"
+          className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-orange-600 px-3 py-3 font-semibold text-white transition group-hover:bg-orange-500 disabled:opacity-50"
         >
           {processando ? (
             <RefreshCw
@@ -624,7 +634,7 @@ function ProdutoCard({
           onClick={aoAdicionarComObservacao}
           disabled={processando || produto.disponivel === false}
           title={produto.disponivel === false ? "Produto indisponível" : "Adicionar com observação"}
-          className="rounded-xl border border-slate-700 px-3 text-slate-300 transition hover:bg-slate-800 disabled:opacity-50"
+          aria-label={`Adicionar ${produto.nome} com observação`} className="min-h-11 rounded-xl border border-slate-700 px-3 text-slate-300 transition hover:bg-slate-800 disabled:opacity-50"
         >
           <ChevronDown size={18} />
         </button>
@@ -658,7 +668,7 @@ function ItemComanda({
           type="button"
           onClick={aoRemover}
           disabled={processando}
-          title="Remover item"
+          title="Remover item" aria-label={`Remover ${item.produtos?.nome ?? "item"}`}
           className="rounded-lg p-2 text-red-300 transition hover:bg-red-500/10 disabled:opacity-50"
         >
           <Trash2 size={17} />
@@ -677,7 +687,7 @@ function ItemComanda({
             type="button"
             onClick={aoDiminuir}
             disabled={processando}
-            className="rounded-l-xl p-3 text-slate-300 transition hover:bg-slate-800 disabled:opacity-50"
+            aria-label={`Diminuir quantidade de ${item.produtos?.nome ?? "item"}`} className="rounded-l-xl p-3 text-slate-300 transition hover:bg-slate-800 disabled:opacity-50"
           >
             <Minus size={16} />
           </button>
@@ -690,7 +700,7 @@ function ItemComanda({
             type="button"
             onClick={aoAumentar}
             disabled={processando}
-            className="rounded-r-xl p-3 text-slate-300 transition hover:bg-slate-800 disabled:opacity-50"
+            aria-label={`Aumentar quantidade de ${item.produtos?.nome ?? "item"}`} className="rounded-r-xl p-3 text-slate-300 transition hover:bg-slate-800 disabled:opacity-50"
           >
             <Plus size={16} />
           </button>

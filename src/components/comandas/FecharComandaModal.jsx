@@ -364,12 +364,12 @@ export default function FecharComandaModal({
       : totalFinal
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black/80 p-0 sm:p-4">
-      <div className="mx-auto flex h-full w-full max-w-6xl flex-col overflow-hidden bg-slate-950 sm:h-[calc(100vh-2rem)] sm:rounded-2xl sm:border sm:border-slate-700">
-        <header className="flex items-center justify-between border-b border-slate-800 bg-slate-900 px-4 py-4 sm:px-6">
+    <div className="fixed inset-0 z-[60] bg-black/85 p-0 sm:p-4">
+      <div role="dialog" aria-modal="true" aria-labelledby="fechar-comanda-titulo" className="mx-auto flex h-full w-full max-w-6xl flex-col overflow-hidden bg-slate-950 shadow-2xl sm:h-[calc(100dvh-2rem)] sm:rounded-3xl sm:border sm:border-slate-700">
+        <header className="flex shrink-0 items-center justify-between gap-4 border-b border-slate-800 bg-slate-900/95 px-4 py-4 sm:px-6">
           <div>
-            <h2 className="text-xl font-bold text-white">
-              Fechar conta
+            <h2 id="fechar-comanda-titulo" className="text-xl font-bold tracking-tight text-white sm:text-2xl">
+              Conferir e fechar conta
             </h2>
 
             <p className="mt-1 text-sm text-slate-400">
@@ -384,7 +384,7 @@ export default function FecharComandaModal({
             type="button"
             onClick={aoFechar}
             disabled={fechandoConta}
-            className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-800 hover:text-white disabled:opacity-50"
+            aria-label="Voltar sem fechar a conta" title="Voltar sem fechar" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-700 p-2 text-slate-300 transition hover:bg-slate-800 hover:text-white disabled:opacity-50"
           >
             <X size={24} />
           </button>
@@ -400,8 +400,8 @@ export default function FecharComandaModal({
             Carregando conta...
           </div>
         ) : (
-          <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[1fr_400px]">
-            <main className="min-h-0 overflow-y-auto p-4 sm:p-6">
+          <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_minmax(330px,380px)] lg:overflow-hidden">
+            <main className="min-w-0 p-4 sm:p-6 lg:min-h-0 lg:overflow-y-auto">
               {erro && (
                 <div className="mb-4 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">
                   {erro}
@@ -426,7 +426,7 @@ export default function FecharComandaModal({
                   </h3>
                 </div>
 
-                <div className="mt-4 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
+                <div className="mt-4 overflow-hidden rounded-2xl border border-slate-700/70 bg-slate-900 shadow-sm">
                   {itens.length === 0 ? (
                     <div className="p-6 text-center text-sm text-slate-500">
                       Nenhum produto lançado.
@@ -489,10 +489,11 @@ export default function FecharComandaModal({
 
                 <form
                   onSubmit={adicionarAjuste}
-                  className="mt-4 grid grid-cols-1 gap-3 rounded-2xl border border-slate-800 bg-slate-900 p-4 md:grid-cols-[150px_1fr_150px_auto]"
+                  className="mt-4 grid grid-cols-1 gap-3 rounded-2xl border border-slate-800 bg-slate-900 p-4 sm:grid-cols-2 xl:grid-cols-[135px_minmax(0,1fr)_135px_auto]"
                 >
                   <select
                     name="tipo"
+                    aria-label="Tipo de ajuste"
                     value={formularioAjuste.tipo}
                     onChange={atualizarCampoAjuste}
                     className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-3 text-white outline-none focus:border-orange-500"
@@ -509,6 +510,7 @@ export default function FecharComandaModal({
                   <input
                     type="text"
                     name="descricao"
+                    aria-label="Descrição do acréscimo ou desconto"
                     value={
                       formularioAjuste.descricao
                     }
@@ -522,6 +524,7 @@ export default function FecharComandaModal({
                     type="text"
                     inputMode="decimal"
                     name="valor"
+                    aria-label="Valor do acréscimo ou desconto"
                     value={formularioAjuste.valor}
                     onChange={atualizarCampoAjuste}
                     placeholder="R$ 0,00"
@@ -620,8 +623,8 @@ export default function FecharComandaModal({
               </section>
             </main>
 
-            <aside className="flex min-h-0 flex-col border-t border-slate-800 bg-slate-900 lg:border-l lg:border-t-0">
-              <div className="min-h-0 flex-1 overflow-y-auto p-5">
+            <aside className="flex min-w-0 flex-col border-t border-slate-800 bg-slate-900 lg:min-h-0 lg:border-l lg:border-t-0">
+              <div className="flex-1 p-4 sm:p-5 lg:min-h-0 lg:overflow-y-auto">
                 <h3 className="font-bold text-white">
                   Resumo da conta
                 </h3>
@@ -654,7 +657,7 @@ export default function FecharComandaModal({
                     Total final
                   </span>
 
-                  <strong className="text-3xl text-emerald-300">
+                  <strong className="text-2xl font-extrabold tracking-tight text-emerald-300 sm:text-3xl">
                     {formatarMoeda(totalFinal)}
                   </strong>
                 </div>
@@ -689,7 +692,7 @@ export default function FecharComandaModal({
                     </button>
 
                     <input
-                      type="number"
+                      type="number" aria-label="Quantidade de pessoas para dividir a conta"
                       min="1"
                       max="100"
                       value={quantidadePessoas}
@@ -723,7 +726,7 @@ export default function FecharComandaModal({
                 </div>
               </div>
 
-              <div className="border-t border-slate-800 bg-slate-950/50 p-5">
+              <div className="sticky bottom-0 z-10 border-t border-slate-700 bg-slate-950 p-4 shadow-[0_-8px_24px_rgba(0,0,0,0.25)] sm:p-5">
                 <button
                   type="button"
                   onClick={fecharConta}
@@ -731,7 +734,7 @@ export default function FecharComandaModal({
                     fechandoConta ||
                     itens.length === 0
                   }
-                  className="w-full rounded-xl bg-emerald-600 px-4 py-3.5 font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="min-h-12 w-full rounded-xl bg-emerald-600 px-4 py-3.5 text-base font-bold text-white transition hover:bg-emerald-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {fechandoConta
                     ? "Fechando conta..."
@@ -744,7 +747,7 @@ export default function FecharComandaModal({
                   type="button"
                   onClick={aoFechar}
                   disabled={fechandoConta}
-                  className="mt-3 w-full rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-300 transition hover:bg-slate-800 disabled:opacity-50"
+                  className="mt-2 min-h-11 w-full rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-300 transition hover:bg-slate-800 disabled:opacity-50"
                 >
                   Voltar
                 </button>

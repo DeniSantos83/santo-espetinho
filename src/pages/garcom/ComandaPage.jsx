@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react"
 import {
   Armchair,
+  CheckCircle2,
+  LayoutGrid,
+  ListFilter,
   CirclePlus,
   Clock3,
   Printer,
@@ -34,6 +37,7 @@ export default function ComandasPage() {
   const [busca, setBusca] = useState("")
   const [filtro, setFiltro] = useState("todas")
   const [agora, setAgora] = useState(Date.now())
+  const [ordenacao, setOrdenacao] = useState("numero")
 
   const [carregando, setCarregando] = useState(true)
   const [salvando, setSalvando] = useState(false)
@@ -308,7 +312,7 @@ export default function ComandasPage() {
   const mesasFiltradas = useMemo(() => {
     const termo = busca.trim().toLowerCase()
 
-    return mesas.filter((mesa) => {
+    const resultado = mesas.filter((mesa) => {
       const comanda = obterComandaDaMesa(mesa.id)
       const ocupada = Boolean(comanda || mesa.mesa_principal_id)
       const texto =
@@ -322,7 +326,15 @@ export default function ComandasPage() {
 
       return correspondeBusca && correspondeFiltro
     })
-  }, [mesas, comandas, busca, filtro])
+    return resultado.sort((a, b) => {
+      if (ordenacao === "ocupadas") {
+        const ativaA = Boolean(obterComandaDaMesa(a.id) || a.mesa_principal_id)
+        const ativaB = Boolean(obterComandaDaMesa(b.id) || b.mesa_principal_id)
+        if (ativaA !== ativaB) return Number(ativaB) - Number(ativaA)
+      }
+      return Number(a.numero) - Number(b.numero)
+    })
+  }, [mesas, comandas, busca, filtro, ordenacao])
 
   const valorEmAberto = comandas.reduce(
     (total, comanda) => total + totalComanda(comanda.id),
@@ -330,228 +342,76 @@ export default function ComandasPage() {
   )
 
   return (
-    <section>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <section className="space-y-5 pb-24 sm:pb-8">
+      <div className="flex flex-col gap-4 rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900 to-orange-950/20 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-orange-400">
-            Atendimento
-          </p>
-          <h1 className="mt-1 text-2xl font-bold text-white sm:text-3xl">
-            Mesas e pedidos
-          </h1>
-          <p className="mt-2 text-sm text-slate-400">
-            Toque em uma mesa para abrir a comanda ou lançar produtos.
-          </p>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-orange-400">Operação · Salão</p>
+          <h1 className="mt-2 flex items-center gap-3 text-2xl font-bold text-white sm:text-3xl"><span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-orange-500/20 bg-orange-500/10 text-orange-400"><LayoutGrid size={22}/></span> Mesas e pedidos</h1>
+          <p className="mt-2 max-w-xl text-sm leading-relaxed text-slate-400">Abra uma comanda, lance produtos ou consulte a pré-conta de uma mesa em atendimento.</p>
         </div>
-
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => carregarDados()}
-            disabled={carregando}
-            className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 font-semibold text-slate-200 disabled:opacity-50 sm:flex-none"
-          >
-            <RefreshCw
-              size={18}
-              className={carregando ? "animate-spin" : ""}
-            />
-            Atualizar
-          </button>
-
-          <button
-            type="button"
-            onClick={() => abrirNovaComanda()}
-            disabled={mesasLivres.length === 0}
-            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-3 font-semibold text-white disabled:opacity-50 sm:flex-none"
-          >
-            <CirclePlus size={19} />
-            Abrir
-          </button>
+        <div className="grid grid-cols-[auto_1fr] gap-2 sm:flex sm:shrink-0">
+          <button type="button" onClick={() => carregarDados()} disabled={carregando} className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800 px-4 text-sm font-semibold text-slate-100 transition hover:bg-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-400 disabled:opacity-50" aria-label="Atualizar dados das mesas"><RefreshCw size={18} className={carregando ? "animate-spin" : ""}/><span className="hidden sm:inline">Atualizar</span></button>
+          <button type="button" onClick={() => abrirNovaComanda()} disabled={mesasLivres.length === 0} className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 text-sm font-bold text-white transition hover:bg-orange-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-400 disabled:opacity-50"><CirclePlus size={19}/> Nova comanda</button>
         </div>
       </div>
 
-      <div className="mt-5 grid grid-cols-3 gap-2 sm:gap-4">
-        <Resumo titulo="Livres" valor={mesasLivres.length} />
-        <Resumo titulo="Ocupadas" valor={comandas.length} />
-        <Resumo titulo="Em aberto" valor={formatarMoeda(valorEmAberto)} compacto />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <Resumo titulo="Mesas livres" valor={mesasLivres.length} variante="livre" />
+        <Resumo titulo="Comandas abertas" valor={comandas.length} variante="ocupada" />
+        <div className="col-span-2 sm:col-span-1"><Resumo titulo="Consumo em aberto" valor={formatarMoeda(valorEmAberto)} compacto variante="valor" /></div>
       </div>
 
-      <div className="mt-5 grid gap-3 rounded-2xl border border-slate-800 bg-slate-900 p-3 sm:grid-cols-[1fr_190px] sm:p-4">
-        <div className="relative">
-          <Search
-            size={18}
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
-          />
-          <input
-            type="search"
-            value={busca}
-            onChange={(evento) => setBusca(evento.target.value)}
-            placeholder="Buscar mesa ou cliente..."
-            className="w-full rounded-xl border border-slate-700 bg-slate-950 py-3 pl-11 pr-4 text-white outline-none focus:border-orange-500"
-          />
+      <div className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/80 p-3 sm:p-4">
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_180px]">
+          <div className="relative">
+            <Search size={18} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input type="search" aria-label="Buscar mesa ou cliente" value={busca} onChange={(evento) => setBusca(evento.target.value)} placeholder="Buscar mesa ou cliente..." className="min-h-12 w-full rounded-xl border border-slate-700 bg-slate-950 py-3 pl-11 pr-11 text-sm text-white outline-none placeholder:text-slate-500 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/15" />
+            {busca && <button type="button" aria-label="Limpar busca" onClick={() => setBusca("")} className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800"><X size={17}/></button>}
+          </div>
+          <label className="sr-only" htmlFor="ordenacao-mesas">Ordenar mesas</label>
+          <select id="ordenacao-mesas" value={ordenacao} onChange={(evento)=>setOrdenacao(evento.target.value)} className="min-h-12 rounded-xl border border-slate-700 bg-slate-950 px-4 text-sm text-white outline-none focus:border-orange-500"><option value="numero">Ordenar por número</option><option value="ocupadas">Ocupadas primeiro</option></select>
         </div>
-
-        <select
-          value={filtro}
-          onChange={(evento) => setFiltro(evento.target.value)}
-          className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none"
-        >
-          <option value="todas">Todas as mesas</option>
-          <option value="livres">Mesas livres</option>
-          <option value="ocupadas">Mesas ocupadas</option>
-        </select>
+        <div className="flex flex-wrap items-center gap-2" aria-label="Filtrar mesas por situação">
+          <ListFilter size={17} className="mr-1 text-slate-400" />
+          {[{id:"todas",label:"Todas",quantidade:mesas.length},{id:"livres",label:"Livres",quantidade:mesasLivres.length},{id:"ocupadas",label:"Ocupadas",quantidade:mesas.filter(m=>Boolean(obterComandaDaMesa(m.id) || m.mesa_principal_id)).length}].map(opcao=><button key={opcao.id} type="button" onClick={()=>setFiltro(opcao.id)} aria-pressed={filtro===opcao.id} className={`min-h-10 rounded-xl border px-3 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-400 ${filtro===opcao.id ? "border-orange-500 bg-orange-600 text-white" : "border-slate-700 bg-slate-950 text-slate-300 hover:border-slate-500"}`}>{opcao.label} <span className="ml-1 text-xs opacity-75">{opcao.quantidade}</span></button>)}
+          {(busca || filtro !== "todas") && <button type="button" onClick={()=>{setBusca("");setFiltro("todas")}} className="ml-auto min-h-10 rounded-lg px-3 text-xs font-semibold text-orange-300 hover:bg-orange-500/10">Limpar filtros</button>}
+        </div>
       </div>
 
-      {erro && (
-        <div className="mt-4 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-          {erro}
-        </div>
-      )}
-
-      {mensagem && (
-        <div className="mt-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
-          {mensagem}
-        </div>
-      )}
-
+      <div className="flex items-center justify-between gap-2 px-1 text-xs text-slate-400" aria-live="polite"><span><strong className="text-slate-200">{mesasFiltradas.length}</strong> {mesasFiltradas.length === 1 ? "mesa encontrada" : "mesas encontradas"}</span><span>Atualização automática a cada 30s</span></div>
+      {erro && <div role="alert" className="rounded-xl border border-red-500/40 bg-red-950/40 p-4 text-sm text-red-200">{erro}</div>}
+      {mensagem && <div role="status" className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-200">{mensagem}</div>}
       {carregando ? (
-        <div className="mt-5 flex min-h-60 items-center justify-center rounded-2xl border border-slate-800 bg-slate-900 text-slate-400">
-          <RefreshCw size={20} className="mr-2 animate-spin" />
-          Carregando salão...
-        </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-label="Carregando mesas">{Array.from({length:6},(_,i)=><div key={i} className="h-48 animate-pulse rounded-2xl border border-slate-800 bg-slate-900" />)}</div>
       ) : mesasFiltradas.length === 0 ? (
-        <div className="mt-5 rounded-2xl border border-dashed border-slate-700 bg-slate-900 p-10 text-center text-slate-400">
-          Nenhuma mesa encontrada.
-        </div>
+        <div className="flex min-h-52 flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-700 bg-slate-900 p-8 text-center"><Search size={27} className="text-slate-500"/><h3 className="font-semibold text-white">Nenhuma mesa encontrada</h3><p className="text-sm text-slate-400">Experimente outro número, nome ou filtro.</p><button type="button" onClick={()=>{setBusca("");setFiltro("todas")}} className="min-h-10 rounded-xl bg-orange-600 px-5 text-sm font-bold text-white">Ver todas as mesas</button></div>
       ) : (
-        <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {mesasFiltradas.map((mesa) => {
             if (mesa.mesa_principal_id) {
               const principal = obterComandaDaMesa(mesa.mesa_principal_id)
-
-              return (
-                <article
-                  key={mesa.id}
-                  className="rounded-2xl border border-violet-500/30 bg-slate-900 p-5"
-                >
-                  <p className="text-xs font-bold uppercase text-violet-300">
-                    Mesa agrupada
-                  </p>
-                  <h3 className="mt-2 text-2xl font-bold text-white">
-                    Mesa {mesa.numero}
-                  </h3>
-                  <p className="mt-2 text-sm text-slate-400">
-                    Atendimento junto com {nomeMesa(mesa.mesa_principal_id)}.
-                  </p>
-                  {principal && (
-                    <button
-                      type="button"
-                      onClick={() => setComandaGerenciada(principal)}
-                      className="mt-5 w-full rounded-xl bg-orange-600 px-4 py-3 font-bold text-white"
-                    >
-                      Lançar pedido
-                    </button>
-                  )}
-                </article>
-              )
-            }
-
-            const comanda = obterComandaDaMesa(mesa.id)
-
-            if (!comanda) {
-              return (
-                <article
-                  key={mesa.id}
-                  className="flex min-h-60 flex-col rounded-2xl border border-emerald-500/30 bg-slate-900 p-5"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-xs font-bold uppercase text-emerald-300">
-                        Livre
-                      </p>
-                      <h3 className="mt-2 text-2xl font-bold text-white">
-                        Mesa {mesa.numero}
-                      </h3>
-                      {mesa.nome && (
-                        <p className="text-sm text-slate-400">{mesa.nome}</p>
-                      )}
-                    </div>
-                    <Armchair className="text-emerald-400" size={28} />
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => abrirNovaComanda(mesa.id)}
-                    className="mt-auto flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 font-bold text-white"
-                  >
-                    <CirclePlus size={18} />
-                    Abrir comanda
-                  </button>
-                </article>
-              )
-            }
-
-            return (
-              <article
-                key={mesa.id}
-                className="flex min-h-72 flex-col rounded-2xl border border-orange-500/35 bg-slate-900 p-5"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-bold uppercase text-orange-300">
-                      Em atendimento
-                    </p>
-                    <h3 className="mt-2 text-2xl font-bold text-white">
-                      Mesa {mesa.numero}
-                    </h3>
-                  </div>
-                  <div className="rounded-xl bg-orange-500/10 p-3 text-orange-300">
-                    <ShoppingCart size={24} />
-                  </div>
-                </div>
-
-                <div className="mt-4 space-y-2 text-sm">
-                  <p className="flex items-center gap-2 text-slate-300">
-                    <UserRound size={16} className="text-slate-500" />
-                    {comanda.cliente || "Cliente não informado"}
-                  </p>
-                  <p className="flex items-center gap-2 text-slate-400">
-                    <Clock3 size={16} />
-                    {tempoAberta(comanda.aberta_em, agora)}
-                  </p>
-                  <p className="text-slate-500">
-                    Responsável: {nomeGarcom(comanda.usuario_id)}
-                  </p>
-                </div>
-
-                <div className="mt-4 flex items-end justify-between border-t border-slate-800 pt-4">
-                  <span className="text-sm text-slate-400">
-                    {quantidadeItens(comanda.id)} itens
-                  </span>
-                  <strong className="text-xl text-emerald-300">
-                    {formatarMoeda(totalComanda(comanda.id))}
-                  </strong>
-                </div>
-
-                <div className="mt-auto grid grid-cols-2 gap-2 pt-5">
-                  <button
-                    type="button"
-                    onClick={() => setComandaGerenciada(comanda)}
-                    className="rounded-xl bg-orange-600 px-3 py-3 font-bold text-white"
-                  >
-                    Lançar pedido
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setComandaPreConta(comanda)}
-                    className="flex items-center justify-center gap-2 rounded-xl border border-slate-700 px-3 py-3 font-semibold text-slate-200"
-                  >
-                    <ReceiptText size={17} />
-                    Pré-conta
-                  </button>
-                </div>
+              return <article key={mesa.id} className="flex min-h-44 flex-col rounded-2xl border border-violet-500/30 bg-slate-900 p-4 sm:p-5">
+                <div className="flex items-center justify-between gap-3"><span className="inline-flex items-center gap-1.5 rounded-full bg-violet-500/10 px-2.5 py-1 text-xs font-bold text-violet-300">Mesa agrupada</span><Armchair size={20} className="text-violet-300"/></div>
+                <h3 className="mt-3 text-2xl font-bold text-white">Mesa {mesa.numero}</h3>
+                <p className="mt-1 text-sm text-slate-400">Atendimento com {nomeMesa(mesa.mesa_principal_id)}</p>
+                {principal && <button type="button" onClick={()=>setComandaGerenciada(principal)} className="mt-4 min-h-12 w-full rounded-xl bg-orange-600 px-4 text-sm font-bold text-white transition hover:bg-orange-500">Lançar pedido na mesa principal</button>}
               </article>
-            )
+            }
+            const comanda = obterComandaDaMesa(mesa.id)
+            if (!comanda) return <article key={mesa.id} className="flex min-h-44 flex-col rounded-2xl border border-emerald-500/20 bg-slate-900 p-4 transition hover:border-emerald-500/40 sm:p-5">
+              <div className="flex items-center justify-between gap-3"><span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-300"><CheckCircle2 size={13}/> Livre</span><Armchair size={22} className="text-emerald-300" /></div>
+              <h3 className="mt-3 text-2xl font-bold text-white">Mesa {mesa.numero}</h3>
+              {mesa.nome && <p className="mt-1 text-sm text-slate-400">{mesa.nome}</p>}
+              <button type="button" onClick={()=>abrirNovaComanda(mesa.id)} className="mt-auto flex min-h-12 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-bold text-white transition hover:bg-emerald-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400"><CirclePlus size={18}/> Abrir comanda</button>
+            </article>
+            return <article key={mesa.id} className="flex min-h-60 flex-col rounded-2xl border border-orange-500/25 bg-slate-900 p-4 transition hover:border-orange-500/45 sm:p-5">
+              <div className="flex items-center justify-between gap-3"><span className="inline-flex items-center gap-1.5 rounded-full bg-orange-500/10 px-2.5 py-1 text-xs font-bold text-orange-300"><ShoppingCart size={13}/> Em atendimento</span><span className="inline-flex items-center gap-1.5 text-xs text-slate-400"><Clock3 size={14}/>{tempoAberta(comanda.aberta_em, agora)}</span></div>
+              <h3 className="mt-3 text-2xl font-bold text-white">Mesa {mesa.numero}</h3>
+              <p className="mt-1 flex items-center gap-2 truncate text-sm text-slate-300"><UserRound size={15} className="shrink-0 text-slate-500"/>{comanda.cliente || "Cliente não informado"}</p>
+              <p className="mt-1 truncate text-xs text-slate-500">Responsável: {nomeGarcom(comanda.usuario_id)}</p>
+              <div className="mt-4 flex items-end justify-between border-t border-slate-800 pt-3"><span className="text-xs text-slate-400">{quantidadeItens(comanda.id)} {quantidadeItens(comanda.id)===1 ? "item" : "itens"}</span><strong className="text-xl font-bold tabular-nums text-white">{formatarMoeda(totalComanda(comanda.id))}</strong></div>
+              <div className="mt-auto grid grid-cols-2 gap-2 pt-4"><button type="button" onClick={()=>setComandaGerenciada(comanda)} className="min-h-12 rounded-xl bg-orange-600 px-2 text-sm font-bold text-white transition hover:bg-orange-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-400">Lançar pedido</button><button type="button" onClick={()=>setComandaPreConta(comanda)} className="flex min-h-12 items-center justify-center gap-1.5 rounded-xl border border-slate-700 px-2 text-sm font-semibold text-slate-200 transition hover:bg-slate-800"><ReceiptText size={16}/> Pré-conta</button></div>
+            </article>
           })}
         </div>
       )}
@@ -592,15 +452,13 @@ export default function ComandasPage() {
   )
 }
 
-function Resumo({ titulo, valor, compacto = false }) {
-  return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-3 sm:p-5">
-      <p className="text-xs text-slate-500 sm:text-sm">{titulo}</p>
-      <p className={`${compacto ? "text-base sm:text-2xl" : "text-2xl sm:text-3xl"} mt-2 font-bold text-white`}>
-        {valor}
-      </p>
-    </div>
-  )
+function Resumo({ titulo, valor, compacto = false, variante = "livre" }) {
+  const tonalidade = variante === "ocupada" ? "border-orange-500/25 bg-orange-500/5" : variante === "valor" ? "border-slate-700 bg-slate-900" : "border-emerald-500/20 bg-emerald-500/5"
+  const cor = variante === "ocupada" ? "text-orange-300" : variante === "livre" ? "text-emerald-300" : "text-white"
+  return <div className={`h-full rounded-2xl border p-4 sm:p-5 ${tonalidade}`}>
+    <p className="text-xs font-semibold text-slate-400 sm:text-sm">{titulo}</p>
+    <p className={`${compacto ? "text-xl sm:text-2xl" : "text-3xl"} mt-2 break-words font-bold tabular-nums ${cor}`}>{valor}</p>
+  </div>
 }
 
 function ModalNovaComanda({
@@ -614,7 +472,7 @@ function ModalNovaComanda({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end bg-black/75 sm:items-center sm:justify-center sm:p-4">
-      <div className="w-full rounded-t-3xl border border-slate-700 bg-slate-900 sm:max-w-lg sm:rounded-2xl">
+      <div className="max-h-[95dvh] w-full overflow-y-auto rounded-t-3xl border border-slate-700 bg-slate-900 shadow-2xl sm:max-w-lg sm:rounded-2xl">
         <div className="flex items-center justify-between border-b border-slate-800 px-5 py-4">
           <div>
             <h2 className="text-xl font-bold text-white">Abrir comanda</h2>
@@ -625,7 +483,7 @@ function ModalNovaComanda({
           <button
             type="button"
             onClick={aoFechar}
-            className="rounded-lg p-2 text-slate-400"
+            className="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-white" aria-label="Fechar janela"
           >
             <X size={22} />
           </button>
@@ -639,7 +497,7 @@ function ModalNovaComanda({
               value={formulario.mesa_id}
               onChange={aoAtualizar}
               required
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white"
+              className="min-h-12 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-orange-500"
             >
               <option value="">Selecione</option>
               {mesas.map((mesa) => (
@@ -659,7 +517,7 @@ function ModalNovaComanda({
               value={formulario.cliente}
               onChange={aoAtualizar}
               placeholder="Nome ou identificação"
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white"
+              className="min-h-12 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-orange-500"
             />
           </div>
 
@@ -687,14 +545,14 @@ function ModalNovaComanda({
               type="button"
               onClick={aoFechar}
               disabled={salvando}
-              className="rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-300"
+              className="min-h-12 rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-300"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={salvando}
-              className="rounded-xl bg-orange-600 px-4 py-3 font-bold text-white disabled:opacity-50"
+              className="min-h-12 rounded-xl bg-orange-600 px-4 py-3 font-bold text-white disabled:opacity-50"
             >
               {salvando ? "Abrindo..." : "Abrir e lançar"}
             </button>
@@ -731,7 +589,7 @@ function ModalPreConta({ comanda, mesa, itens, aoFechar }) {
         </div>
 
         <div className="p-5 text-white">
-          <h3 className="text-center text-xl font-bold">Santo Espetinho</h3>
+          <h3 className="text-center text-xl font-bold">Nova Espetaria Bar</h3>
           <p className="mt-1 text-center text-sm text-slate-400">
             {mesa} • {comanda.cliente || "Cliente não informado"}
           </p>
@@ -772,7 +630,7 @@ function ModalPreConta({ comanda, mesa, itens, aoFechar }) {
           <button
             type="button"
             onClick={aoFechar}
-            className="rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-300"
+            className="min-h-12 rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-300"
           >
             Fechar
           </button>

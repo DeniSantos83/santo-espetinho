@@ -278,22 +278,23 @@ export default function UsuariosPage() {
   ).length
 
   return (
-    <section>
+    <section className="space-y-0 pb-8 [font-family:inherit]">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white">Usuários</h2>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-400">Equipe e acessos</p>
+          <h2 className="mt-1 text-3xl font-bold tracking-tight text-white">Usuários</h2>
 
           <p className="mt-1 text-sm text-slate-400">
             Gerencie administradores, gerentes e garçons.
           </p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={carregarUsuarios}
             disabled={carregando}
-            className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 font-semibold text-slate-200 transition hover:bg-slate-800 disabled:opacity-50"
+            className="flex items-center gap-2 min-h-11 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 font-semibold text-slate-200 transition hover:border-slate-500 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400 disabled:opacity-50"
           >
             <RefreshCw
               size={18}
@@ -306,7 +307,7 @@ export default function UsuariosPage() {
           <button
             type="button"
             onClick={abrirCadastro}
-            className="flex items-center gap-2 rounded-xl bg-orange-600 px-4 py-3 font-semibold text-white transition hover:bg-orange-700"
+            className="flex items-center gap-2 min-h-11 rounded-xl bg-orange-600 px-4 py-3 font-semibold text-white shadow-sm shadow-orange-950/30 transition hover:bg-orange-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400"
           >
             <CirclePlus size={20} />
             Novo usuário
@@ -332,14 +333,14 @@ export default function UsuariosPage() {
             value={busca}
             onChange={(evento) => setBusca(evento.target.value)}
             placeholder="Buscar por nome ou login..."
-            className="w-full rounded-xl border border-slate-700 bg-slate-950 py-3 pl-11 pr-4 text-white outline-none placeholder:text-slate-600 focus:border-orange-500"
+            className="w-full rounded-xl border border-slate-700 bg-slate-950 py-3 pl-11 pr-4 text-white outline-none placeholder:text-slate-600 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
           />
         </div>
 
         <select
           value={filtroPerfil}
           onChange={(evento) => setFiltroPerfil(evento.target.value)}
-          className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-orange-500"
+          className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
         >
           <option value="todos">Todos os perfis</option>
           <option value="admin">Administradores</option>
@@ -359,6 +360,8 @@ export default function UsuariosPage() {
           {mensagem}
         </div>
       )}
+
+      <p role="status" className="mt-3 text-sm text-slate-400">Exibindo {usuariosFiltrados.length} de {usuarios.length} usuários</p>
 
       {carregando ? (
         <div className="mt-6 flex min-h-48 items-center justify-center rounded-2xl border border-slate-800 bg-slate-900 text-slate-400">
@@ -380,7 +383,7 @@ export default function UsuariosPage() {
       ) : (
         <div className="mt-6 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
           <div className="overflow-x-auto">
-            <table className="min-w-full">
+            <table className="min-w-[760px] w-full text-sm">
               <thead className="bg-slate-950/70">
                 <tr className="text-left text-xs uppercase tracking-wide text-slate-400">
                   <th className="px-5 py-4">Usuário</th>
@@ -393,7 +396,7 @@ export default function UsuariosPage() {
 
               <tbody className="divide-y divide-slate-800">
                 {usuariosFiltrados.map((usuario) => (
-                  <tr key={usuario.id} className="hover:bg-slate-800/40">
+                  <tr key={usuario.id} className="transition-colors hover:bg-slate-800/50">
                     <td className="px-5 py-4">
                       <p className="font-semibold text-white">{usuario.nome}</p>
                       <p className="mt-1 text-sm text-slate-400">
@@ -470,7 +473,7 @@ export default function UsuariosPage() {
 
 function CardResumo({ titulo, valor }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+    <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5 shadow-sm shadow-black/10">
       <p className="text-sm text-slate-400">{titulo}</p>
       <p className="mt-2 text-3xl font-bold text-white">{valor}</p>
     </div>
@@ -522,7 +525,7 @@ function ModalUsuario({
               value={formulario.nome}
               onChange={aoAtualizarCampo}
               required
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-orange-500"
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
             />
           </div>
 
@@ -560,7 +563,7 @@ function ModalUsuario({
                   autoComplete="new-password"
                   required={!usuarioEditando}
                   placeholder="Mínimo de 8 caracteres"
-                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-orange-500"
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
                 />
               </div>
 
@@ -577,7 +580,7 @@ function ModalUsuario({
                   minLength={8}
                   autoComplete="new-password"
                   required={!usuarioEditando}
-                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-orange-500"
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
                 />
               </div>
             </>
@@ -594,7 +597,7 @@ function ModalUsuario({
               value={formulario.telefone}
               onChange={aoAtualizarCampo}
               placeholder="(79) 99999-9999"
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-orange-500"
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
             />
           </div>
 
@@ -607,7 +610,7 @@ function ModalUsuario({
               name="perfil"
               value={formulario.perfil}
               onChange={aoAtualizarCampo}
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-orange-500"
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
             >
               <option value="garcom">Garçom</option>
               <option value="gerente">Gerente</option>
@@ -651,7 +654,7 @@ function ModalUsuario({
             <button
               type="submit"
               disabled={salvando}
-              className="rounded-xl bg-orange-600 px-5 py-3 font-semibold text-white transition hover:bg-orange-700 disabled:opacity-60"
+              className="min-h-11 rounded-xl bg-orange-600 px-5 py-3 font-semibold text-white shadow-sm shadow-orange-950/30 transition hover:bg-orange-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400 disabled:opacity-60"
             >
               {salvando
                 ? "Salvando..."

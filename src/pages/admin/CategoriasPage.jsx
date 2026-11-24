@@ -309,14 +309,14 @@ export default function CategoriasPage() {
   const totalInativas = categorias.length - totalAtivas
 
   return (
-    <section>
+    <section className="space-y-0 pb-8 [font-family:inherit]">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-orange-400">
             Cardápio
           </p>
 
-          <h2 className="mt-1 text-3xl font-bold text-white">
+          <h2 className="mt-1 text-3xl font-bold tracking-tight text-white">
             Categorias
           </h2>
 
@@ -325,12 +325,12 @@ export default function CategoriasPage() {
           </p>
         </div>
 
-        <div className="flex flex-col gap-2 sm:flex-row">
+        <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={carregarDados}
             disabled={carregando}
-            className="flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 font-semibold text-slate-200 transition hover:bg-slate-800 disabled:opacity-50"
+            className="flex items-center justify-center gap-2 min-h-11 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 font-semibold text-slate-200 transition hover:border-slate-500 hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400 disabled:opacity-50"
           >
             <RefreshCw
               size={18}
@@ -342,7 +342,7 @@ export default function CategoriasPage() {
           <button
             type="button"
             onClick={abrirNovaCategoria}
-            className="flex items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 py-3 font-semibold text-white transition hover:bg-orange-700"
+            className="flex items-center justify-center gap-2 min-h-11 rounded-xl bg-orange-600 px-5 py-3 font-semibold text-white shadow-sm shadow-orange-950/30 transition hover:bg-orange-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400"
           >
             <CirclePlus size={20} />
             Nova categoria
@@ -386,14 +386,14 @@ export default function CategoriasPage() {
               value={busca}
               onChange={(evento) => setBusca(evento.target.value)}
               placeholder="Buscar categoria..."
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 py-3 pl-11 pr-4 text-white outline-none placeholder:text-slate-600 focus:border-orange-500"
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 py-3 pl-11 pr-4 text-white outline-none placeholder:text-slate-600 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
             />
           </div>
 
           <select
             value={filtroStatus}
             onChange={(evento) => setFiltroStatus(evento.target.value)}
-            className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-orange-500"
+            className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
           >
             <option value="todas">Todos os status</option>
             <option value="ativas">Somente ativas</option>
@@ -414,6 +414,8 @@ export default function CategoriasPage() {
         </div>
       )}
 
+      <p role="status" className="mt-3 text-sm text-slate-400">Exibindo {categoriasFiltradas.length} de {categorias.length} categorias</p>
+
       {carregando ? (
         <div className="mt-6 flex min-h-64 items-center justify-center rounded-2xl border border-slate-800 bg-slate-900 text-slate-400">
           <RefreshCw size={20} className="mr-2 animate-spin" />
@@ -426,7 +428,7 @@ export default function CategoriasPage() {
           aoCriar={abrirNovaCategoria}
         />
       ) : (
-        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
           {categoriasFiltradas.map((categoria) => (
             <CategoriaCard
               key={categoria.id}
@@ -591,7 +593,7 @@ function StatusCategoria({ ativa }) {
 
 function CardResumo({ titulo, valor, detalhe, classe }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+    <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5 shadow-sm shadow-black/10">
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
         {titulo}
       </p>
@@ -619,7 +621,7 @@ function EstadoVazio({ titulo, texto, aoCriar }) {
       <button
         type="button"
         onClick={aoCriar}
-        className="mt-5 flex items-center gap-2 rounded-xl bg-orange-600 px-4 py-3 font-semibold text-white transition hover:bg-orange-700"
+        className="mt-5 flex items-center gap-2 min-h-11 rounded-xl bg-orange-600 px-4 py-3 font-semibold text-white shadow-sm shadow-orange-950/30 transition hover:bg-orange-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400"
       >
         <CirclePlus size={18} />
         Criar categoria
@@ -675,7 +677,7 @@ function ModalCategoria({
               maxLength={100}
               required
               autoFocus
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-600 focus:border-orange-500"
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-600 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
             />
           </div>
 
@@ -691,7 +693,7 @@ function ModalCategoria({
               onChange={aoAtualizarCampo}
               placeholder="Ex.: Doces, sobremesas e opções para finalizar o pedido"
               maxLength={250}
-              className="w-full resize-none rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-600 focus:border-orange-500"
+              className="w-full resize-none rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-600 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
             />
           </div>
 
@@ -708,7 +710,7 @@ function ModalCategoria({
                 step="1"
                 value={formulario.ordem}
                 onChange={aoAtualizarCampo}
-                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-orange-500"
+                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
               />
 
               <p className="mt-2 text-xs text-slate-500">
@@ -762,7 +764,7 @@ function ModalCategoria({
             <button
               type="submit"
               disabled={salvando}
-              className="flex items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 py-3 font-semibold text-white transition hover:bg-orange-700 disabled:opacity-50"
+              className="flex items-center justify-center gap-2 min-h-11 rounded-xl bg-orange-600 px-5 py-3 font-semibold text-white shadow-sm shadow-orange-950/30 transition hover:bg-orange-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-400 disabled:opacity-50"
             >
               {salvando ? (
                 <>
