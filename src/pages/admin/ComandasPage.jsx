@@ -2523,7 +2523,7 @@ function ModalPreConta({
         <div className="min-h-0 flex-1 overflow-y-auto p-5">
           <div className="rounded-2xl border border-slate-800 bg-white p-5 text-slate-950">
             <div className="text-center">
-              <h4 className="text-xl font-bold">Santo Espetinho</h4>
+              <h4 className="text-xl font-bold">Nova Espetaria Bar</h4>
               <p className="mt-1 text-xs font-semibold">
                 PRÉ-CONTA — NÃO É DOCUMENTO FISCAL
               </p>
