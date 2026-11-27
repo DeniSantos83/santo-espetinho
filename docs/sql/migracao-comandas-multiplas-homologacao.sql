@@ -11,7 +11,7 @@ DROP INDEX public.comandas_mesa_aberta_unique;
 CREATE INDEX IF NOT EXISTS comandas_mesa_status_idx ON public.comandas(mesa_id,status);
 
 CREATE OR REPLACE FUNCTION public.abrir_comanda_na_mesa(
- p_mesa_id uuid, p_cliente text DEFAULT NULL, p_observacoes text DEFAULT NULL
+ p_mesa_id uuid, p_cliente text DEFAULT NULL, p_observacoes text DEFAULT NULL, p_reserva_id uuid DEFAULT NULL
 ) RETURNS public.comandas
 LANGUAGE plpgsql SECURITY INVOKER SET search_path = ''
 AS $$
@@ -27,14 +27,24 @@ BEGIN
  IF v_mesa.mesa_principal_id IS NOT NULL OR v_mesa.grupo_mesas_id IS NOT NULL
  THEN RAISE EXCEPTION 'Utilize a mesa principal ou desfaça o agrupamento antes de criar uma comanda individual'; END IF;
  IF EXISTS (SELECT 1 FROM public.reservas_mesas r WHERE r.mesa_id = p_mesa_id AND r.status = 'ativa')
-    AND NOT EXISTS(SELECT 1 FROM public.comandas c WHERE c.mesa_id = p_mesa_id AND c.status='aberta')
- THEN RAISE EXCEPTION 'Mesa reservada: inicie o atendimento da reserva pelo painel de gestão'; END IF;
+  AND NOT EXISTS (SELECT 1 FROM public.comandas c WHERE c.mesa_id = p_mesa_id AND c.status = 'aberta') THEN
+   IF p_reserva_id IS NULL OR NOT EXISTS (
+      SELECT 1 FROM public.reservas_mesas r
+      WHERE r.id=p_reserva_id AND r.mesa_id=p_mesa_id AND r.status='ativa'
+   ) THEN RAISE EXCEPTION 'Mesa reservada: inicie o atendimento da reserva pelo painel de gestão'; END IF;
+ END IF;
  INSERT INTO public.comandas (
  mesa_id,usuario_id,cliente,observacoes,status,aberta_em
  ) VALUES (
  p_mesa_id,v_usuario.id,NULLIF(BTRIM(p_cliente),''),NULLIF(BTRIM(p_observacoes),''),'aberta',now()
  ) RETURNING * INTO v_comanda;
  UPDATE public.mesas SET status='ocupada' WHERE id=p_mesa_id;
+ IF p_reserva_id IS NOT NULL THEN
+   UPDATE public.reservas_mesas
+   SET status='atendida',atendida_em=now()
+   WHERE id=p_reserva_id AND mesa_id=p_mesa_id AND status='ativa';
+   IF NOT FOUND THEN RAISE EXCEPTION 'Reserva não encontrada ou já atendida'; END IF;
+ END IF;
  RETURN v_comanda;
 END $$;
 
@@ -76,8 +86,8 @@ BEGIN
  RETURN jsonb_build_object('comanda_id',p_comanda_id,'mesas_comandas_restantes',v_restantes,'mesa_liberada',v_restantes=0,'total',v_total);
 END $$;
 
-REVOKE ALL ON FUNCTION public.abrir_comanda_na_mesa(uuid,text,text) FROM PUBLIC,anon;
+REVOKE ALL ON FUNCTION public.abrir_comanda_na_mesa(uuid,text,text,uuid) FROM PUBLIC,anon;
 REVOKE ALL ON FUNCTION public.fechar_comanda_individual(uuid,integer) FROM PUBLIC,anon;
-GRANT EXECUTE ON FUNCTION public.abrir_comanda_na_mesa(uuid,text,text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.abrir_comanda_na_mesa(uuid,text,text,uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.fechar_comanda_individual(uuid,integer) TO authenticated;
 COMMIT;

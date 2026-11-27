@@ -334,23 +334,13 @@ export default function ComandasPage() {
           p_mesa_id: formulario.mesa_id,
           p_cliente: formulario.cliente.trim() || null,
           p_observacoes: formulario.observacoes.trim() || null,
+          p_reserva_id: reservaParaAtender?.id || null,
         }
       )
       if (erroComanda) throw erroComanda
 
       setModalAberto(false)
       setFormulario(FORMULARIO_INICIAL)
-      if (reservaParaAtender && reservaParaAtender.mesa_id === formulario.mesa_id) {
-        const { error: erroReserva } = await supabase
-          .from("reservas_mesas")
-          .update({ status: "atendida", atendida_em: new Date().toISOString() })
-          .eq("id", reservaParaAtender.id)
-
-        if (erroReserva) {
-          console.error("Comanda aberta, mas a reserva não foi finalizada:", erroReserva)
-        }
-      }
-
       setReservaParaAtender(null)
       setMensagem("Comanda aberta com sucesso.")
 
