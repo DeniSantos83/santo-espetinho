@@ -25,5 +25,7 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Analisar codigo
         run: npm run lint
+      - name: Testar regras de comandas
+        run: npm test
       - name: Compilar aplicacao
         run: npm run build

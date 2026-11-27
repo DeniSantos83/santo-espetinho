@@ -25,6 +25,7 @@ import {
   X,
 } from "lucide-react"
 import { supabase } from "../../lib/supabase"
+import { comandasAbertasDaMesa } from "../../lib/comandasPorMesa"
 import GerenciarComandaModal from "../../components/comandas/GerenciarComandaModal"
 import FecharComandaModal from "../../components/comandas/FecharComandaModal"
 
@@ -915,7 +916,7 @@ export default function ComandasPage() {
   }
 
   function obterComandasAbertasDaMesa(mesaId) {
-    return comandas.filter(c => c.mesa_id === mesaId && c.status === "aberta")
+    return comandasAbertasDaMesa(comandas, mesaId)
   }
 
   function obterComandaAbertaDaMesa(mesaId) {
