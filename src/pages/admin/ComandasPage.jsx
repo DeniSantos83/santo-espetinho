@@ -225,7 +225,7 @@ export default function ComandasPage() {
 
     setSalvandoReserva(true)
     try {
-      const usuarioAtual = await obterUsuarioAtual()
+      await obterUsuarioAtual()
       const { error: erroReserva } = await supabase.from("reservas_mesas").insert({
         mesa_id: formularioReserva.mesa_id,
         cliente: formularioReserva.cliente.trim(),
@@ -328,45 +328,15 @@ export default function ComandasPage() {
     try {
       const usuarioAtual = await obterUsuarioAtual()
 
-      const { data: novaComanda, error: erroComanda } = await supabase
-        .from("comandas")
-        .insert({
-          mesa_id: formulario.mesa_id,
-          usuario_id: usuarioAtual.id,
-          cliente: formulario.cliente.trim() || null,
-          observacoes: formulario.observacoes.trim() || null,
-          status: "aberta",
-          total: 0,
-          subtotal_consumo: 0,
-          total_acrescimos: 0,
-          total_descontos: 0,
-          total_final: 0,
-          quantidade_pessoas: 1,
-          valor_por_pessoa: 0,
-          aberta_em: new Date().toISOString(),
-        })
-        .select()
-        .single()
-
-      if (erroComanda) {
-        if (erroComanda.code === "23505") {
-          throw new Error("Esta mesa já possui uma comanda aberta.")
+      const { data: novaComanda, error: erroComanda } = await supabase.rpc(
+        "abrir_comanda_na_mesa",
+        {
+          p_mesa_id: formulario.mesa_id,
+          p_cliente: formulario.cliente.trim() || null,
+          p_observacoes: formulario.observacoes.trim() || null,
         }
-
-        throw erroComanda
-      }
-
-      const { error: erroMesa } = await supabase
-        .from("mesas")
-        .update({ status: "ocupada" })
-        .eq("id", formulario.mesa_id)
-
-      if (erroMesa) {
-        console.error(
-          "A comanda foi criada, mas a mesa não foi atualizada:",
-          erroMesa
-        )
-      }
+      )
+      if (erroComanda) throw erroComanda
 
       setModalAberto(false)
       setFormulario(FORMULARIO_INICIAL)
@@ -964,6 +934,10 @@ export default function ComandasPage() {
     return usuario?.nome ?? "Não identificado"
   }
 
+  function obterComandasAbertasDaMesa(mesaId) {
+    return comandas.filter(c => c.mesa_id === mesaId && c.status === "aberta")
+  }
+
   function obterComandaAbertaDaMesa(mesaId) {
     return comandas.find(
       (comanda) =>
@@ -1013,19 +987,23 @@ export default function ComandasPage() {
   }, [mesasAtivas, idsMesasOcupadas, idsMesasReservadas])
 
   const mesasDisponiveisParaComanda = useMemo(() => {
-    if (!reservaParaAtender) return mesasLivres
+    const disponiveis = mesasAtivas.filter(mesa =>
+      !mesa.mesa_principal_id && !mesa.grupo_mesas_id &&
+      (!idsMesasReservadas.includes(mesa.id) || idsMesasOcupadas.includes(mesa.id))
+    )
+    if (!reservaParaAtender) return disponiveis
 
     const mesaReservada = mesasAtivas.find(
       (mesa) => mesa.id === reservaParaAtender.mesa_id
     )
 
-    if (!mesaReservada) return mesasLivres
+    if (!mesaReservada) return disponiveis
 
     return [
       mesaReservada,
-      ...mesasLivres.filter((mesa) => mesa.id !== mesaReservada.id),
+      ...disponiveis.filter((mesa) => mesa.id !== mesaReservada.id),
     ]
-  }, [mesasLivres, mesasAtivas, reservaParaAtender])
+  }, [mesasAtivas, idsMesasReservadas, idsMesasOcupadas, reservaParaAtender])
 
   const mesasFiltradas = useMemo(() => {
     const termo = busca.trim().toLowerCase()
@@ -1241,6 +1219,7 @@ export default function ComandasPage() {
           mesas={mesasFiltradas}
           agora={agora}
           obterComanda={obterComandaAbertaDaMesa}
+          obterComandas={obterComandasAbertasDaMesa}
           obterTotal={obterTotalExibido}
           calcularQuantidadeItens={calcularQuantidadeItens}
           aoAbrirComanda={abrirNovaComanda}
@@ -1382,6 +1361,7 @@ function PainelMesas({
   mesas,
   agora,
   obterComanda,
+  obterComandas,
   obterTotal,
   calcularQuantidadeItens,
   aoAbrirComanda,
@@ -1412,7 +1392,8 @@ function PainelMesas({
   return (
     <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {mesas.map((mesa) => {
-        const comanda = obterComanda(mesa.id)
+        const comandasDaMesa = obterComandas(mesa.id)
+        const comanda = comandasDaMesa[0]
 
         if (mesa.mesa_principal_id) {
           const comandaPrincipal = obterComanda(mesa.mesa_principal_id)
@@ -1457,6 +1438,25 @@ function PainelMesas({
           )
         }
 
+        if (comandasDaMesa.length > 1) {
+          return <article key={mesa.id} className="flex flex-col gap-3 rounded-2xl border border-orange-500/30 bg-slate-900 p-5">
+            <div className="flex items-center justify-between"><h3 className="text-xl font-bold text-white">Mesa {mesa.numero}</h3><span className="rounded-full bg-orange-500/10 px-3 py-1 text-xs font-bold text-orange-300">{comandasDaMesa.length} comandas</span></div>
+            <p className="text-sm text-slate-400">Total da mesa: <strong className="text-white">{formatarMoeda(comandasDaMesa.reduce((s,c)=>s+obterTotal(c),0))}</strong></p>
+            {comandasDaMesa.map(c => <div key={c.id} className="rounded-xl border border-slate-700 bg-slate-950/70 p-3">
+              <div className="flex justify-between gap-2"><strong className="text-white">{c.cliente || "Comanda sem nome"}</strong><strong className="text-emerald-300">{formatarMoeda(obterTotal(c))}</strong></div>
+              <p className="mt-1 text-xs text-slate-400">{calcularQuantidadeItens(c.id)} itens · Responsável: {nomeDoUsuario(c.usuario_id)}</p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button type="button" onClick={()=>aoGerenciar(c)} className="min-h-11 rounded-lg bg-orange-600 px-2 text-sm font-bold text-white">Pedidos</button>
+                <button type="button" onClick={()=>aoFecharConta(c)} className="min-h-11 rounded-lg border border-emerald-500/40 px-2 text-sm font-semibold text-emerald-300">Fechar conta</button>
+                <button type="button" onClick={()=>aoPreConta(c)} className="min-h-11 rounded-lg border border-slate-700 px-2 text-sm font-semibold text-slate-200">Pré-conta</button>
+                <button type="button" onClick={()=>aoTrocarResponsavel(c)} className="min-h-11 rounded-lg border border-slate-700 px-2 text-sm font-semibold text-slate-200">Responsável</button>
+              </div>
+            </div>)}
+            <button type="button" onClick={()=>aoAbrirComanda(mesa.id)} className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-orange-500/50 font-semibold text-orange-300"><CirclePlus size={17}/> Nova comanda na mesa</button>
+            <p className="text-xs text-slate-500">Para transferir ou juntar mesas, feche as comandas individuais primeiro.</p>
+          </article>
+        }
+
         return (
           <MesaOcupadaCard
             key={mesa.id}
@@ -1473,6 +1473,7 @@ function PainelMesas({
             aoTrocarResponsavel={() => aoTrocarResponsavel(comanda)}
             nomeResponsavel={nomeDoUsuario(comanda.usuario_id)}
             aoCancelar={() => aoCancelar(comanda)}
+            aoNovaComanda={() => aoAbrirComanda(mesa.id)}
           />
         )
       })}
@@ -1682,6 +1683,7 @@ function MesaOcupadaCard({
   aoTrocarResponsavel,
   nomeResponsavel,
   aoCancelar,
+  aoNovaComanda,
 }) {
   const tempo = calcularTempoAberta(comanda.aberta_em, agora)
   const semItens = quantidadeItens === 0
@@ -1741,6 +1743,7 @@ function MesaOcupadaCard({
           </div>
         </div>
 
+        <button type="button" onClick={aoNovaComanda} className="mb-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-orange-500/40 font-semibold text-orange-300"><CirclePlus size={17}/> Nova comanda nesta mesa</button>
         <div className="mt-auto grid grid-cols-2 gap-2">
           <button
             type="button"
