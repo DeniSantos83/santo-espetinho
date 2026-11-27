@@ -32,8 +32,23 @@ export default function LoginPage() {
         const { data, error } = await supabase.functions.invoke("login-usuario", {
           body: { usuario: identificador, senha },
         });
-        if (error || !data?.access_token || !data?.refresh_token) {
-          throw new Error("Usuário ou senha inválidos.");
+        if (error) {
+          // Preserva a natureza da falha: rede, resposta HTTP ou autenticação.
+          // Não tratar indisponibilidade do serviço como senha incorreta.
+          if (error.name === "FunctionsFetchError" || error.name === "FunctionsRelayError") {
+            throw new Error("Não foi possível acessar o servidor de login. Verifique a rede, firewall ou proxy.");
+          }
+          const status = error.context?.status;
+          if (status === 429) {
+            throw new Error("Muitas tentativas. Tente novamente em 15 minutos.");
+          }
+          if (status === 401 || status === 400) {
+            throw new Error("Usuário ou senha inválidos.");
+          }
+          throw new Error("Serviço de login indisponível. Verifique sua conexão e tente novamente.");
+        }
+        if (!data?.access_token || !data?.refresh_token) {
+          throw new Error("O servidor não devolveu uma sessão válida.");
         }
         const { error: erroSessao } = await supabase.auth.setSession({
           access_token: data.access_token,
@@ -43,7 +58,14 @@ export default function LoginPage() {
       }
     } catch (falha) {
       console.error("Falha ao autenticar:", falha);
-      setErro("Usuário ou senha inválidos. Confira os dados e tente novamente.");
+      const mensagem = String(falha?.message ?? "");
+      if (/Failed to fetch|NetworkError|ERR_|fetch failed|network request failed/i.test(mensagem)) {
+        setErro("Falha de conexão com o Supabase. Verifique firewall, proxy ou acesso à rede.");
+      } else if (/Invalid login credentials|Email not confirmed|Usuário ou senha inválidos/i.test(mensagem)) {
+        setErro("Usuário ou senha inválidos. Confira os dados e tente novamente.");
+      } else {
+        setErro(mensagem || "Não foi possível concluir o login.");
+      }
     } finally {
       setCarregando(false);
     }
