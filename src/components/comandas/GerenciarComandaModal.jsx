@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import {
   ChevronDown,
+  ArrowRightLeft,
   Minus,
   Plus,
   RefreshCw,
@@ -34,6 +35,11 @@ export default function GerenciarComandaModal({
   const [erro, setErro] = useState("")
   const [mensagem, setMensagem] = useState("")
   const [mostrarItensMobile, setMostrarItensMobile] = useState(false)
+  const [outrasComandas, setOutrasComandas] = useState([])
+  const [itemParaTransferir, setItemParaTransferir] = useState(null)
+  const [destinoTransferencia, setDestinoTransferencia] = useState("")
+  const [quantidadeTransferencia, setQuantidadeTransferencia] = useState(1)
+  const [erroTransferencia, setErroTransferencia] = useState("")
 
   useEffect(() => {
     carregarDados()
@@ -48,6 +54,7 @@ export default function GerenciarComandaModal({
         resultadoProdutos,
         resultadoCategorias,
         resultadoItens,
+        resultadoComandas,
       ] = await Promise.all([
         supabase
           .from("produtos")
@@ -92,6 +99,14 @@ export default function GerenciarComandaModal({
           `)
           .eq("comanda_id", comanda.id)
           .order("criado_em", { ascending: true }),
+
+        supabase
+          .from("comandas")
+          .select("id, cliente, mesa_id, status")
+          .eq("mesa_id", comanda.mesa_id)
+          .eq("status", "aberta")
+          .neq("id", comanda.id)
+          .order("aberta_em", { ascending: true }),
       ])
 
       if (resultadoProdutos.error) {
@@ -106,15 +121,21 @@ export default function GerenciarComandaModal({
         throw resultadoItens.error
       }
 
+      if (resultadoComandas.error) {
+        throw resultadoComandas.error
+      }
+
       setProdutos(resultadoProdutos.data ?? [])
       setCategorias(resultadoCategorias.data ?? [])
       setItens(resultadoItens.data ?? [])
+      setOutrasComandas(resultadoComandas.data ?? [])
     } catch (erroCarregamento) {
       console.error("Erro ao carregar dados da comanda:", erroCarregamento)
       setErro("Não foi possível carregar os dados da comanda.")
       setProdutos([])
       setCategorias([])
       setItens([])
+      setOutrasComandas([])
     } finally {
       setCarregando(false)
     }
@@ -228,6 +249,65 @@ export default function GerenciarComandaModal({
     } catch (erroRemocao) {
       console.error("Erro ao remover item:", erroRemocao)
       setErro("Não foi possível remover o produto.")
+    } finally {
+      setProcessando(null)
+    }
+  }
+
+
+  function abrirTransferenciaItem(item) {
+    if (processando || outrasComandas.length === 0) return
+    setItemParaTransferir(item)
+    setDestinoTransferencia(outrasComandas[0].id)
+    setQuantidadeTransferencia(1)
+    setErro("")
+    setMensagem("")
+  }
+
+  function fecharTransferenciaItem() {
+    if (processando) return
+    setItemParaTransferir(null)
+    setDestinoTransferencia("")
+    setQuantidadeTransferencia(1)
+  }
+
+  async function transferirItem(evento) {
+    evento.preventDefault()
+    if (!itemParaTransferir || processando) return
+    const quantidade = Number(quantidadeTransferencia)
+    if (!Number.isInteger(quantidade) || quantidade < 1 || quantidade > Number(itemParaTransferir.quantidade)) {
+      setErroTransferencia("Informe uma quantidade válida, dentro do saldo disponível.")
+      return
+    }
+    if (!outrasComandas.some(c => c.id === destinoTransferencia)) {
+      setErroTransferencia("Selecione outra comanda aberta na mesma mesa.")
+      return
+    }
+
+    const destino = outrasComandas.find(c => c.id === destinoTransferencia)
+    if (!window.confirm(
+      `Transferir ${quantidade} unidade(s) de ${itemParaTransferir.produtos?.nome || "produto"} para ${destino?.cliente || "outra comanda"}?`
+    )) return
+
+    setProcessando("transferencia")
+    setErroTransferencia("")
+    try {
+      const { error } = await supabase.rpc("transferir_item_comanda", {
+        p_item_id: itemParaTransferir.id,
+        p_comanda_destino_id: destinoTransferencia,
+        p_quantidade: quantidade,
+      })
+      if (error) throw error
+
+      setItemParaTransferir(null)
+      setDestinoTransferencia("")
+      setQuantidadeTransferencia(1)
+      setMensagem("Produto transferido. Os valores das comandas foram recalculados.")
+      await carregarDados()
+      await atualizarComandaPai()
+    } catch (erroTransferencia) {
+      console.error("Erro ao transferir item:", erroTransferencia)
+      setErroTransferencia(erroTransferencia?.message || "Não foi possível transferir o produto.")
     } finally {
       setProcessando(null)
     }
@@ -529,6 +609,7 @@ export default function GerenciarComandaModal({
                         )
                       }
                       aoRemover={() => removerItem(item)}
+                      aoTransferir={outrasComandas.length ? () => abrirTransferenciaItem(item) : null}
                     />
                   ))}
                 </div>
@@ -563,6 +644,45 @@ export default function GerenciarComandaModal({
           <span className="flex items-center gap-2 font-extrabold">{formatarMoeda(totalComanda)} <ChevronDown className="rotate-180" size={17}/></span>
         </button>
       </div>
+
+      {itemParaTransferir && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/85 p-4" role="presentation">
+          <form onSubmit={transferirItem} role="dialog" aria-modal="true" aria-labelledby="transferir-item-titulo"
+            className="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <h3 id="transferir-item-titulo" className="text-lg font-bold text-white">Transferir produto</h3>
+                <p className="mt-1 text-sm text-slate-400">{itemParaTransferir.produtos?.nome ?? "Produto"}</p>
+              </div>
+              <button type="button" onClick={fecharTransferenciaItem} disabled={Boolean(processando)}
+                aria-label="Cancelar transferência" className="rounded-lg border border-slate-700 p-2 text-slate-300"><X size={18}/></button>
+            </div>
+            <label htmlFor="comanda-destino" className="mt-5 block text-sm font-semibold text-slate-200">Comanda de destino</label>
+            <select id="comanda-destino" value={destinoTransferencia}
+              onChange={e=>setDestinoTransferencia(e.target.value)} disabled={Boolean(processando)}
+              className="mt-2 min-h-12 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-white">
+              {outrasComandas.map(c=><option key={c.id} value={c.id}>{c.cliente || `Comanda ${c.id.slice(0,8)}`}</option>)}
+            </select>
+            <label htmlFor="quantidade-transferencia" className="mt-4 block text-sm font-semibold text-slate-200">
+              Quantidade (até {itemParaTransferir.quantidade})
+            </label>
+            <input id="quantidade-transferencia" type="number" min="1" max={itemParaTransferir.quantidade} step="1" required
+              value={quantidadeTransferencia} onChange={e=>setQuantidadeTransferencia(e.target.value)}
+              disabled={Boolean(processando)}
+              className="mt-2 min-h-12 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-white" />
+            {erroTransferencia && <p role="alert" className="mt-3 text-sm text-red-300">{erroTransferencia}</p>}
+            <p className="mt-3 text-xs text-slate-400">O valor do produto sai da comanda de origem e entra na conta de destino, mantendo o preço original.</p>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <button type="button" onClick={fecharTransferenciaItem} disabled={Boolean(processando)}
+                className="min-h-12 rounded-xl border border-slate-700 font-semibold text-slate-300">Cancelar</button>
+              <button type="submit" disabled={Boolean(processando) || outrasComandas.length === 0}
+                className="min-h-12 rounded-xl bg-orange-600 font-semibold text-white disabled:opacity-50">
+                {processando === "transferencia" ? "Transferindo..." : "Transferir"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {produtoComObservacao && (
         <ModalObservacao
@@ -649,6 +769,7 @@ function ItemComanda({
   aoDiminuir,
   aoAumentar,
   aoRemover,
+  aoTransferir,
 }) {
   return (
     <article className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
@@ -675,6 +796,12 @@ function ItemComanda({
         </button>
       </div>
 
+      {aoTransferir && (
+        <button type="button" onClick={aoTransferir} disabled={processando}
+          className="mt-2 flex min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-orange-500/40 text-sm font-semibold text-orange-300 disabled:opacity-50">
+          <ArrowRightLeft size={15}/> Transferir para outra comanda
+        </button>
+      )}
       {item.observacao && (
         <div className="mt-3 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
           {item.observacao}
