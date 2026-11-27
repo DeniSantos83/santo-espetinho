@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react"
 import { supabase } from "../../lib/supabase"
+import { abrirComandaCompat } from "../../lib/abrirComandaCompat"
 import { comandasAbertasDaMesa } from "../../lib/comandasPorMesa"
 import GerenciarComandaModal from "../../components/comandas/GerenciarComandaModal"
 
@@ -198,21 +199,19 @@ export default function ComandasPage() {
     setSalvando(true)
 
     try {
-      await obterUsuarioAtual()
-
-      const { data: novaComanda, error: erroComanda } = await supabase.rpc(
-        "abrir_comanda_na_mesa",
-        {
-          p_mesa_id: formulario.mesa_id,
-          p_cliente: formulario.cliente.trim() || null,
-          p_observacoes: formulario.observacoes.trim() || null,
-        }
-      )
-      if (erroComanda) throw erroComanda
+      const usuarioAtual = await obterUsuarioAtual()
+      const { comanda: novaComanda, modoLegado } = await abrirComandaCompat({
+        mesaId: formulario.mesa_id,
+        cliente: formulario.cliente.trim(),
+        observacoes: formulario.observacoes.trim(),
+        usuarioId: usuarioAtual.id,
+      })
 
       setModalAberto(false)
       setFormulario(FORMULARIO_INICIAL)
-      setMensagem("Comanda aberta. Agora lance os pedidos.")
+      setMensagem(modoLegado
+        ? "Comanda aberta no modo tradicional (uma por mesa)."
+        : "Comanda aberta. Agora lance os pedidos.")
       await carregarDados()
 
       if (novaComanda) setComandaGerenciada(novaComanda)
