@@ -40,6 +40,9 @@ BEGIN
  ) RETURNING * INTO v_comanda;
  UPDATE public.mesas SET status='ocupada' WHERE id=p_mesa_id;
  IF p_reserva_id IS NOT NULL THEN
+   IF v_usuario.perfil NOT IN ('admin','gerente') THEN
+     RAISE EXCEPTION 'Somente a gestão pode atender uma reserva';
+   END IF;
    UPDATE public.reservas_mesas
    SET status='atendida',atendida_em=now()
    WHERE id=p_reserva_id AND mesa_id=p_mesa_id AND status='ativa';
@@ -83,6 +86,17 @@ BEGIN
  SELECT count(*) INTO v_restantes FROM public.comandas
  WHERE mesa_id=v_mesa_id AND status='aberta';
  IF v_restantes=0 THEN
+   -- Não liberar um grupo se qualquer outra mesa agrupada ainda tiver comanda aberta.
+   IF EXISTS (
+     SELECT 1 FROM public.comandas c
+     JOIN public.mesas m ON m.id=c.mesa_id
+     WHERE c.status='aberta' AND (
+       m.id=v_mesa_id OR m.mesa_principal_id=v_mesa_id
+       OR m.grupo_mesas_id=v_mesa_id
+     )
+   ) THEN
+     RAISE EXCEPTION 'Grupo de mesas ainda possui comandas abertas';
+   END IF;
    UPDATE public.mesas SET
      status='livre', mesa_principal_id=NULL, grupo_mesas_id=NULL
    WHERE id=v_mesa_id OR grupo_mesas_id=v_mesa_id;
@@ -112,11 +126,60 @@ BEGIN
  UPDATE public.comandas SET status='cancelada',fechada_em=now() WHERE id=p_comanda_id;
  SELECT count(*) INTO v_restantes FROM public.comandas WHERE mesa_id=v_mesa_id AND status='aberta';
  IF v_restantes=0 THEN
+   IF EXISTS (
+     SELECT 1 FROM public.comandas c
+     JOIN public.mesas m ON m.id=c.mesa_id
+     WHERE c.status='aberta' AND (
+       m.id=v_mesa_id OR m.mesa_principal_id=v_mesa_id
+       OR m.grupo_mesas_id=v_mesa_id
+     )
+   ) THEN RAISE EXCEPTION 'Grupo de mesas ainda possui comandas abertas'; END IF;
    UPDATE public.mesas SET status='livre', mesa_principal_id=NULL, grupo_mesas_id=NULL
    WHERE id=v_mesa_id OR grupo_mesas_id=v_mesa_id;
  END IF;
  RETURN jsonb_build_object('comanda_id',p_comanda_id,'comandas_restantes',v_restantes,'mesa_liberada',v_restantes=0);
 END $$;
+
+
+-- Proteção contra lançamento ou alteração de consumo após o fechamento.
+-- Bloqueia alterações que contornem o fluxo oficial por acesso direto às tabelas.
+-- A trava de linha também serializa lançamentos concorrentes com o fechamento.
+CREATE OR REPLACE FUNCTION public.proteger_comanda_encerrada()
+RETURNS trigger
+LANGUAGE plpgsql SECURITY INVOKER SET search_path = ''
+AS $
+DECLARE
+ v_id uuid;
+ v_status text;
+BEGIN
+ IF TG_OP IN ('UPDATE','DELETE') THEN
+   v_id := OLD.comanda_id;
+   IF v_id IS NOT NULL THEN
+     SELECT status INTO v_status FROM public.comandas WHERE id=v_id FOR UPDATE;
+     IF v_status IS DISTINCT FROM 'aberta' THEN
+       RAISE EXCEPTION 'Não é permitido modificar itens de comanda encerrada';
+     END IF;
+   END IF;
+ END IF;
+ IF TG_OP IN ('INSERT','UPDATE') THEN
+   v_id := NEW.comanda_id;
+   IF v_id IS NULL THEN RAISE EXCEPTION 'Comanda obrigatória para lançar itens'; END IF;
+   SELECT status INTO v_status FROM public.comandas WHERE id=v_id FOR UPDATE;
+   IF v_status IS DISTINCT FROM 'aberta' THEN
+     RAISE EXCEPTION 'Não é permitido lançar itens em comanda encerrada';
+   END IF;
+ END IF;
+ RETURN COALESCE(NEW, OLD);
+END $;
+
+CREATE TRIGGER proteger_itens_comanda_encerrada
+BEFORE INSERT OR UPDATE OR DELETE ON public.comanda_itens
+FOR EACH ROW EXECUTE FUNCTION public.proteger_comanda_encerrada();
+
+CREATE TRIGGER proteger_ajustes_comanda_encerrada
+BEFORE INSERT OR UPDATE OR DELETE ON public.comanda_ajustes
+FOR EACH ROW EXECUTE FUNCTION public.proteger_comanda_encerrada();
+
 
 REVOKE ALL ON FUNCTION public.abrir_comanda_na_mesa(uuid,text,text,uuid) FROM PUBLIC,anon;
 REVOKE ALL ON FUNCTION public.fechar_comanda_individual(uuid,integer) FROM PUBLIC,anon;
