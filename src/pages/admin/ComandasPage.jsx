@@ -326,7 +326,7 @@ export default function ComandasPage() {
     setSalvando(true)
 
     try {
-      const usuarioAtual = await obterUsuarioAtual()
+      await obterUsuarioAtual()
 
       const { data: novaComanda, error: erroComanda } = await supabase.rpc(
         "abrir_comanda_na_mesa",
@@ -382,26 +382,17 @@ export default function ComandasPage() {
     if (!confirmado) return
 
     try {
-      const { error: erroComanda } = await supabase
-        .from("comandas")
-        .update({
-          status: "cancelada",
-          fechada_em: new Date().toISOString(),
-        })
-        .eq("id", comanda.id)
+      const { data: cancelamento, error: erroCancelamento } = await supabase.rpc(
+        "cancelar_comanda_individual",
+        { p_comanda_id: comanda.id }
+      )
+      if (erroCancelamento) throw erroCancelamento
 
-      if (erroComanda) throw erroComanda
-
-      const { error: erroMesa } = await supabase
-        .from("mesas")
-        .update({ status: "livre" })
-        .eq("id", comanda.mesa_id)
-
-      if (erroMesa) {
-        console.error("Erro ao liberar mesa:", erroMesa)
-      }
-
-      setMensagem("Comanda cancelada e mesa liberada.")
+      setMensagem(
+        cancelamento?.mesa_liberada
+          ? "Comanda cancelada. Mesa liberada."
+          : "Comanda cancelada. A mesa permanece ocupada pelas demais comandas."
+      )
       await carregarDados()
     } catch (erroCancelamento) {
       console.error("Erro ao cancelar comanda:", erroCancelamento)
@@ -1004,7 +995,7 @@ export default function ComandasPage() {
       const reservada = Boolean(obterReservaAtivaDaMesa(mesa.id))
 
       const textoMesa = `mesa ${mesa.numero} ${mesa.nome ?? ""}`.toLowerCase()
-      const cliente = comanda?.cliente?.toLowerCase() ?? ""
+      const cliente = obterComandasAbertasDaMesa(mesa.id).map(c => c.cliente ?? "").join(" ").toLowerCase()
 
       const correspondeBusca =
         !termo ||

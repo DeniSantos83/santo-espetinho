@@ -86,8 +86,35 @@ BEGIN
  RETURN jsonb_build_object('comanda_id',p_comanda_id,'mesas_comandas_restantes',v_restantes,'mesa_liberada',v_restantes=0,'total',v_total);
 END $$;
 
+-- Cancelar somente comanda sem consumo, sem liberar mesa com outras comandas.
+CREATE OR REPLACE FUNCTION public.cancelar_comanda_individual(p_comanda_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql SECURITY INVOKER SET search_path = ''
+AS $$
+DECLARE v_mesa_id uuid; v_status text; v_restantes integer;
+BEGIN
+ IF NOT EXISTS (
+   SELECT 1 FROM public.usuarios u WHERE u.auth_id=auth.uid()
+   AND u.ativo IS TRUE AND u.perfil IN ('admin','gerente')
+ ) THEN RAISE EXCEPTION 'Somente administração ou gerência pode cancelar uma comanda'; END IF;
+ SELECT mesa_id INTO v_mesa_id FROM public.comandas WHERE id=p_comanda_id;
+ IF v_mesa_id IS NULL THEN RAISE EXCEPTION 'Comanda não encontrada'; END IF;
+ PERFORM 1 FROM public.mesas WHERE id=v_mesa_id FOR UPDATE;
+ SELECT status INTO v_status FROM public.comandas WHERE id=p_comanda_id FOR UPDATE;
+ IF v_status IS DISTINCT FROM 'aberta' THEN RAISE EXCEPTION 'Comanda não está aberta'; END IF;
+ IF EXISTS(SELECT 1 FROM public.comanda_itens WHERE comanda_id=p_comanda_id)
+ OR EXISTS(SELECT 1 FROM public.comanda_ajustes WHERE comanda_id=p_comanda_id)
+ THEN RAISE EXCEPTION 'Remova itens e ajustes antes de cancelar'; END IF;
+ UPDATE public.comandas SET status='cancelada',fechada_em=now() WHERE id=p_comanda_id;
+ SELECT count(*) INTO v_restantes FROM public.comandas WHERE mesa_id=v_mesa_id AND status='aberta';
+ IF v_restantes=0 THEN UPDATE public.mesas SET status='livre' WHERE id=v_mesa_id; END IF;
+ RETURN jsonb_build_object('comanda_id',p_comanda_id,'comandas_restantes',v_restantes,'mesa_liberada',v_restantes=0);
+END $$;
+
 REVOKE ALL ON FUNCTION public.abrir_comanda_na_mesa(uuid,text,text,uuid) FROM PUBLIC,anon;
 REVOKE ALL ON FUNCTION public.fechar_comanda_individual(uuid,integer) FROM PUBLIC,anon;
+REVOKE ALL ON FUNCTION public.cancelar_comanda_individual(uuid) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.abrir_comanda_na_mesa(uuid,text,text,uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.fechar_comanda_individual(uuid,integer) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.cancelar_comanda_individual(uuid) TO authenticated;
 COMMIT;
