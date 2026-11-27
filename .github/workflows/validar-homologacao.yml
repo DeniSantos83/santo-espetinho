@@ -29,3 +29,33 @@ jobs:
         run: npm test
       - name: Compilar aplicacao
         run: npm run build
+
+  postgres-migracao:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: homologacao
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d homologacao"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: homologacao
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preparar esquema isolado
+        run: psql -v ON_ERROR_STOP=1 -f tests/sql/schema_minimo.sql
+      - name: Aplicar migração na base efêmera
+        run: psql -v ON_ERROR_STOP=1 -f docs/sql/migracao-comandas-multiplas-homologacao.sql
+      - name: Exercitar contas e transferência de itens
+        run: psql -v ON_ERROR_STOP=1 -f tests/sql/cenarios_multiplas_comandas.sql
