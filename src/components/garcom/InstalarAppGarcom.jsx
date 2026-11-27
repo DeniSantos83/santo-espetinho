@@ -14,54 +14,24 @@ export default function InstalarAppGarcom() {
 
   useEffect(() => {
     setIos(IOS.test(navigator.userAgent))
-    const url = `${import.meta.env.BASE_URL}garcom.webmanifest`
-    let manifest = document.querySelector('link[rel="manifest"]')
-    if (!manifest) {
-      manifest = document.createElement("link")
-      manifest.rel = "manifest"
-      document.head.appendChild(manifest)
+    const instalarDisponivel = () => {
+      setEventoInstalacao(window.__espetariaInstallPrompt ?? null)
     }
-    manifest.href = url
-
-    let appleIcon = document.querySelector('link[rel="apple-touch-icon"]')
-    if (!appleIcon) {
-      appleIcon = document.createElement("link")
-      appleIcon.rel = "apple-touch-icon"
-      document.head.appendChild(appleIcon)
-    }
-    appleIcon.href = `${import.meta.env.BASE_URL}icons/garcom-192.png`
-
-    let theme = document.querySelector('meta[name="theme-color"]')
-    if (!theme) {
-      theme = document.createElement("meta")
-      theme.name = "theme-color"
-      document.head.appendChild(theme)
-    }
-    theme.content = "#101827"
-
-    const instalarDisponivel = (event) => {
-      event.preventDefault()
-      setEventoInstalacao(event)
-    }
+    instalarDisponivel()
     const instaladoAgora = () => {
       setInstalado(true)
       setEventoInstalacao(null)
     }
     const conectar = () => setOnline(true)
     const desconectar = () => setOnline(false)
-    window.addEventListener("beforeinstallprompt", instalarDisponivel)
+    window.addEventListener("espetaria-install-ready", instalarDisponivel)
     window.addEventListener("appinstalled", instaladoAgora)
     window.addEventListener("online", conectar)
     window.addEventListener("offline", desconectar)
 
-    if (import.meta.env.PROD && "serviceWorker" in navigator) {
-      navigator.serviceWorker.register(`${import.meta.env.BASE_URL}garcom-sw.js`, {
-        scope: import.meta.env.BASE_URL,
-      }).catch((erro) => console.error("Não foi possível habilitar o app do garçom:", erro))
-    }
 
     return () => {
-      window.removeEventListener("beforeinstallprompt", instalarDisponivel)
+      window.removeEventListener("espetaria-install-ready", instalarDisponivel)
       window.removeEventListener("appinstalled", instaladoAgora)
       window.removeEventListener("online", conectar)
       window.removeEventListener("offline", desconectar)
@@ -72,6 +42,7 @@ export default function InstalarAppGarcom() {
     if (!eventoInstalacao) return
     const prompt = eventoInstalacao
     setEventoInstalacao(null)
+    window.__espetariaInstallPrompt = null
     await prompt.prompt()
     await prompt.userChoice
   }
