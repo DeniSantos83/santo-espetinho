@@ -147,7 +147,7 @@ END $$;
 CREATE OR REPLACE FUNCTION public.proteger_comanda_encerrada()
 RETURNS trigger
 LANGUAGE plpgsql SECURITY INVOKER SET search_path = ''
-AS $
+AS $$
 DECLARE
  v_id uuid;
  v_status text;
@@ -170,7 +170,7 @@ BEGIN
    END IF;
  END IF;
  RETURN COALESCE(NEW, OLD);
-END $;
+END $$;
 
 CREATE TRIGGER proteger_itens_comanda_encerrada
 BEFORE INSERT OR UPDATE OR DELETE ON public.comanda_itens
