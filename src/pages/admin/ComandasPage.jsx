@@ -423,25 +423,10 @@ export default function ComandasPage() {
   }
 
   async function finalizarFechamento() {
-    const mesaPrincipalId = comandaParaFechar?.mesa_id
-
-    if (mesaPrincipalId) {
-      const { error: erroLiberarGrupo } = await supabase
-        .from("mesas")
-        .update({
-          status: "livre",
-          mesa_principal_id: null,
-          grupo_mesas_id: null,
-        })
-        .or(`id.eq.${mesaPrincipalId},grupo_mesas_id.eq.${mesaPrincipalId}`)
-
-      if (erroLiberarGrupo) {
-        console.error("Erro ao liberar mesas do grupo:", erroLiberarGrupo)
-      }
-    }
-
+    // A liberação da mesa e do grupo pertence à transação do banco.
+    // Não liberar pelo cliente: pode haver outras comandas abertas.
     setComandaParaFechar(null)
-    setMensagem("Conta fechada e todas as mesas do grupo foram liberadas.")
+    setMensagem("Conta fechada. Confira as demais comandas abertas antes de liberar a mesa.")
     await carregarDados()
   }
 
@@ -569,6 +554,9 @@ export default function ComandasPage() {
     let mesaDestinoReservada = false
 
     try {
+      if (obterComandasAbertasDaMesa(mesaOrigemId).length !== 1) {
+        throw new Error("Transfira apenas mesas com uma comanda aberta. A transferência de comandas individuais está em desenvolvimento.")
+      }
       const { data: destino, error: erroDestino } = await supabase
         .from("mesas")
         .select("id, numero, nome, status, ativa")
@@ -717,6 +705,14 @@ export default function ComandasPage() {
       const mesaPrincipalId = comandaParaJuntar.mesa_id
       const mesaSecundariaId = comandaSecundaria.mesa_id
 
+      // O fluxo antigo de junção unifica itens e não suporta contas independentes.
+      // Impedir perda de isolamento financeiro enquanto a operação atômica não estiver pronta.
+      const contasPrincipal = obterComandasAbertasDaMesa(mesaPrincipalId)
+      const contasSecundaria = obterComandasAbertasDaMesa(mesaSecundariaId)
+      if (contasPrincipal.length !== 1 || contasSecundaria.length !== 1) {
+        throw new Error("Não é possível juntar mesas com comandas individuais. Feche as contas ou aguarde a nova função de junção.")
+      }
+
       if (mesaPrincipalId === mesaSecundariaId) {
         throw new Error("Selecione outra mesa para realizar a junção.")
       }
@@ -812,6 +808,9 @@ export default function ComandasPage() {
     setSeparandoMesaId(mesa.id)
 
     try {
+      if (obterComandasAbertasDaMesa(mesa.id).length > 0) {
+        throw new Error("A mesa ainda possui comandas abertas e não pode ser liberada.")
+      }
       const { data: mesaSeparada, error: erroSeparacao } = await supabase
         .from("mesas")
         .update({

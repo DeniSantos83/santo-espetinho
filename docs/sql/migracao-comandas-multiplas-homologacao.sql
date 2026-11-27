@@ -82,7 +82,11 @@ BEGIN
  WHERE id=p_comanda_id;
  SELECT count(*) INTO v_restantes FROM public.comandas
  WHERE mesa_id=v_mesa_id AND status='aberta';
- IF v_restantes=0 THEN UPDATE public.mesas SET status='livre' WHERE id=v_mesa_id; END IF;
+ IF v_restantes=0 THEN
+   UPDATE public.mesas SET
+     status='livre', mesa_principal_id=NULL, grupo_mesas_id=NULL
+   WHERE id=v_mesa_id OR grupo_mesas_id=v_mesa_id;
+ END IF;
  RETURN jsonb_build_object('comanda_id',p_comanda_id,'mesas_comandas_restantes',v_restantes,'mesa_liberada',v_restantes=0,'total',v_total);
 END $$;
 
@@ -107,7 +111,10 @@ BEGIN
  THEN RAISE EXCEPTION 'Remova itens e ajustes antes de cancelar'; END IF;
  UPDATE public.comandas SET status='cancelada',fechada_em=now() WHERE id=p_comanda_id;
  SELECT count(*) INTO v_restantes FROM public.comandas WHERE mesa_id=v_mesa_id AND status='aberta';
- IF v_restantes=0 THEN UPDATE public.mesas SET status='livre' WHERE id=v_mesa_id; END IF;
+ IF v_restantes=0 THEN
+   UPDATE public.mesas SET status='livre', mesa_principal_id=NULL, grupo_mesas_id=NULL
+   WHERE id=v_mesa_id OR grupo_mesas_id=v_mesa_id;
+ END IF;
  RETURN jsonb_build_object('comanda_id',p_comanda_id,'comandas_restantes',v_restantes,'mesa_liberada',v_restantes=0);
 END $$;
 
