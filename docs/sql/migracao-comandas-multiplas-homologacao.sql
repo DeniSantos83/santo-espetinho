@@ -187,4 +187,86 @@ REVOKE ALL ON FUNCTION public.cancelar_comanda_individual(uuid) FROM PUBLIC,anon
 GRANT EXECUTE ON FUNCTION public.abrir_comanda_na_mesa(uuid,text,text,uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.fechar_comanda_individual(uuid,integer) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.cancelar_comanda_individual(uuid) TO authenticated;
+-- Transferência atômica de unidades entre comandas abertas DA MESMA MESA.
+-- Não cria cobrança duplicada: move a linha inteira ou divide a quantidade.
+CREATE OR REPLACE FUNCTION public.transferir_item_comanda(
+ p_item_id uuid,
+ p_comanda_destino_id uuid,
+ p_quantidade integer
+) RETURNS jsonb
+LANGUAGE plpgsql SECURITY INVOKER SET search_path = ''
+AS $transf$
+DECLARE
+ v_item public.comanda_itens%ROWTYPE;
+ v_origem public.comandas%ROWTYPE;
+ v_destino public.comandas%ROWTYPE;
+ v_id uuid;
+BEGIN
+ IF NOT EXISTS (
+   SELECT 1 FROM public.usuarios u WHERE u.auth_id=auth.uid()
+     AND u.ativo IS TRUE AND u.perfil IN ('admin','gerente','garcom')
+ ) THEN RAISE EXCEPTION 'Funcionário sem autorização'; END IF;
+
+ IF p_quantidade IS NULL OR p_quantidade < 1 THEN
+   RAISE EXCEPTION 'A quantidade transferida deve ser positiva';
+ END IF;
+ IF p_item_id IS NULL OR p_comanda_destino_id IS NULL THEN
+   RAISE EXCEPTION 'Item e comanda de destino são obrigatórios';
+ END IF;
+
+ -- Localizar a comanda de origem; trancar ambas em ordem estável
+ -- antes de travar a linha do item.
+ SELECT comanda_id INTO v_id FROM public.comanda_itens WHERE id=p_item_id;
+ IF v_id IS NULL THEN RAISE EXCEPTION 'Item não encontrado'; END IF;
+ IF v_id=p_comanda_destino_id THEN RAISE EXCEPTION 'Escolha outra comanda'; END IF;
+ FOR v_id IN
+   SELECT c.id FROM public.comandas c
+   WHERE c.id IN ((SELECT comanda_id FROM public.comanda_itens WHERE id=p_item_id),p_comanda_destino_id)
+   ORDER BY c.id
+ LOOP
+   PERFORM 1 FROM public.comandas WHERE id=v_id FOR UPDATE;
+ END LOOP;
+ SELECT * INTO v_item FROM public.comanda_itens WHERE id=p_item_id FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION 'Item não encontrado'; END IF;
+ SELECT * INTO v_origem FROM public.comandas WHERE id=v_item.comanda_id;
+ SELECT * INTO v_destino FROM public.comandas WHERE id=p_comanda_destino_id;
+ IF v_origem.id IS NULL OR v_destino.id IS NULL
+   OR v_origem.status<>'aberta' OR v_destino.status<>'aberta' THEN
+   RAISE EXCEPTION 'As duas comandas precisam estar abertas';
+ END IF;
+ IF v_origem.mesa_id IS NULL OR v_origem.mesa_id IS DISTINCT FROM v_destino.mesa_id THEN
+   RAISE EXCEPTION 'Transferência permitida apenas entre comandas da mesma mesa';
+ END IF;
+ IF v_item.quantidade < p_quantidade THEN
+   RAISE EXCEPTION 'Quantidade maior que a disponível na comanda';
+ END IF;
+
+ IF v_item.quantidade=p_quantidade THEN
+   UPDATE public.comanda_itens SET comanda_id=p_comanda_destino_id WHERE id=v_item.id;
+ ELSE
+   -- Primeiro diminui na origem; os triggers existentes recalculam subtotal.
+   UPDATE public.comanda_itens SET quantidade=quantidade-p_quantidade WHERE id=v_item.id;
+   INSERT INTO public.comanda_itens (
+     comanda_id,produto_id,garcom_id,quantidade,preco_unitario,observacao,status
+   ) VALUES (
+     p_comanda_destino_id,v_item.produto_id,v_item.garcom_id,
+     p_quantidade,v_item.preco_unitario,v_item.observacao,v_item.status
+   );
+ END IF;
+
+ -- O trigger legado atualiza 'total' mas não o total_final de cada conta.
+ PERFORM public.recalcular_valores_comanda(v_origem.id);
+ PERFORM public.recalcular_valores_comanda(v_destino.id);
+ RETURN jsonb_build_object(
+   'item_id',p_item_id,
+   'comanda_origem_id',v_origem.id,
+   'comanda_destino_id',v_destino.id,
+   'quantidade',p_quantidade
+ );
+END
+$transf$;
+
+REVOKE ALL ON FUNCTION public.transferir_item_comanda(uuid,uuid,integer) FROM PUBLIC,anon;
+GRANT EXECUTE ON FUNCTION public.transferir_item_comanda(uuid,uuid,integer) TO authenticated;
+
 COMMIT;
