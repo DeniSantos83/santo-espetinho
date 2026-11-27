@@ -2,7 +2,7 @@
 SET request.jwt.claim.sub='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 DO $test$
 DECLARE
- m uuid; m2 uuid; a uuid; b uuid; c uuid; it uuid; t record; value numeric; n int;
+ m uuid; m2 uuid; a uuid; b uuid; c uuid; it uuid; t jsonb; value numeric; n int;
 BEGIN
  INSERT INTO public.usuarios(auth_id,perfil)
  VALUES ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','admin');
@@ -16,12 +16,12 @@ BEGIN
 
  INSERT INTO public.comanda_itens(comanda_id,produto_id,quantidade,preco_unitario)
  VALUES(a,gen_random_uuid(),3,12) RETURNING id INTO it;
- SELECT * INTO t FROM public.transferir_item_comanda(it,b,2);
+ SELECT public.transferir_item_comanda(it,b,2) INTO t;
  SELECT coalesce(sum(subtotal),0) INTO value FROM public.comanda_itens WHERE comanda_id=a;
  IF value<>12 THEN RAISE EXCEPTION 'Origem deveria ser 12, foi %',value; END IF;
  SELECT coalesce(sum(subtotal),0) INTO value FROM public.comanda_itens WHERE comanda_id=b;
  IF value<>24 THEN RAISE EXCEPTION 'Destino deveria ser 24, foi %',value; END IF;
- IF t.quantidade<>2 THEN RAISE EXCEPTION 'Quantidade transferida incorreta'; END IF;
+ IF (t->>'quantidade')::integer<>2 THEN RAISE EXCEPTION 'Quantidade transferida incorreta'; END IF;
  SELECT coalesce(sum(subtotal),0) INTO value FROM public.comanda_itens WHERE comanda_id IN (a,b);
  IF value<>36 THEN RAISE EXCEPTION 'Soma financeira alterada por transferência'; END IF;
 
