@@ -9,18 +9,18 @@
   "background_color": "#0a101b",
   "theme_color": "#101827",
   "orientation": "portrait",
-  "icons": [
-    {
-      "src": "icons/garcom-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "icons/garcom-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
-  ]
+ "icons": [
+  {
+    "src": "icons/garcom-192.png",
+    "sizes": "192x192",
+    "type": "image/png",
+    "purpose": "any maskable"
+  },
+  {
+    "src": "icons/garcom-512.png",
+    "sizes": "512x512",
+    "type": "image/png",
+    "purpose": "any maskable"
+  }
+]
 }
