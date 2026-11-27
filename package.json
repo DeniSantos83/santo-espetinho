@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "prebuild": "node scripts/generate-pwa-icons.cjs",
+    "predev": "node scripts/generate-pwa-icons.cjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.1",

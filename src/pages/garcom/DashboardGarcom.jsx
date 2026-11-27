@@ -3,6 +3,7 @@ import { BookOpen, ClipboardList, LogOut, UserRound } from "lucide-react"
 import { supabase } from "../../lib/supabase"
 import logoEspetaria from "../../assets/espetariabar.png"
 import ComandaPage from "./ComandaPage"
+import InstalarAppGarcom from "../../components/garcom/InstalarAppGarcom"
 import CardapioPage from "./CardapioPage"
 
 const abas = [
@@ -92,6 +93,7 @@ export default function DashboardGarcom() {
       </header>
 
       <div className="mx-auto max-w-7xl px-3 pt-4 sm:px-6 sm:pt-6">
+        <InstalarAppGarcom />
         <div className="mb-4 hidden sm:block">
           <p className="text-[11px] font-bold uppercase tracking-[.18em] text-orange-400">Painel do garçom</p>
           <h2 className="mt-1 text-2xl font-bold tracking-tight">
