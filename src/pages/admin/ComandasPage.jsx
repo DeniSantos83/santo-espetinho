@@ -1423,16 +1423,45 @@ function PainelMesas({
           return <article key={mesa.id} className="flex flex-col gap-3 rounded-2xl border border-orange-500/30 bg-slate-900 p-5">
             <div className="flex items-center justify-between"><h3 className="text-xl font-bold text-white">Mesa {mesa.numero}</h3><span className="rounded-full bg-orange-500/10 px-3 py-1 text-xs font-bold text-orange-300">{comandasDaMesa.length} comandas</span></div>
             <p className="text-sm text-slate-400">Total da mesa: <strong className="text-white">{formatarMoeda(comandasDaMesa.reduce((s,c)=>s+obterTotal(c),0))}</strong></p>
-            {comandasDaMesa.map(c => <div key={c.id} className="rounded-xl border border-slate-700 bg-slate-950/70 p-3">
-              <div className="flex justify-between gap-2"><strong className="text-white">{c.cliente || "Comanda sem nome"}</strong><strong className="text-emerald-300">{formatarMoeda(obterTotal(c))}</strong></div>
-              <p className="mt-1 text-xs text-slate-400">{calcularQuantidadeItens(c.id)} itens · Responsável: {nomeDoUsuario(c.usuario_id)}</p>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <button type="button" onClick={()=>aoGerenciar(c)} className="min-h-11 rounded-lg bg-orange-600 px-2 text-sm font-bold text-white">Pedidos</button>
-                <button type="button" onClick={()=>aoFecharConta(c)} className="min-h-11 rounded-lg border border-emerald-500/40 px-2 text-sm font-semibold text-emerald-300">Fechar conta</button>
-                <button type="button" onClick={()=>aoPreConta(c)} className="min-h-11 rounded-lg border border-slate-700 px-2 text-sm font-semibold text-slate-200">Pré-conta</button>
-                <button type="button" onClick={()=>aoTrocarResponsavel(c)} className="min-h-11 rounded-lg border border-slate-700 px-2 text-sm font-semibold text-slate-200">Responsável</button>
-              </div>
-            </div>)}
+            {comandasDaMesa.map(c => {
+              const comandaSemItens = calcularQuantidadeItens(c.id) === 0
+              return (
+                <div key={c.id} className="rounded-xl border border-slate-700 bg-slate-950/70 p-3">
+                  <div className="flex justify-between gap-2">
+                    <strong className="min-w-0 truncate text-white">{c.cliente || "Comanda sem nome"}</strong>
+                    <strong className="shrink-0 text-emerald-300">{formatarMoeda(obterTotal(c))}</strong>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-400">
+                    {calcularQuantidadeItens(c.id)} itens · Responsável: {nomeDoUsuario(c.usuario_id)}
+                  </p>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <button type="button" onClick={() => aoGerenciar(c)}
+                      className="min-h-11 rounded-lg bg-orange-600 px-2 text-sm font-bold text-white">
+                      Pedidos
+                    </button>
+                    <button type="button" onClick={() => aoFecharConta(c)} disabled={comandaSemItens}
+                      className="min-h-11 rounded-lg border border-emerald-500/40 px-2 text-sm font-semibold text-emerald-300 disabled:cursor-not-allowed disabled:opacity-40">
+                      Fechar conta
+                    </button>
+                    <button type="button" onClick={() => aoPreConta(c)} disabled={comandaSemItens}
+                      className="min-h-11 rounded-lg border border-slate-700 px-2 text-sm font-semibold text-slate-200 disabled:cursor-not-allowed disabled:opacity-40">
+                      Pré-conta
+                    </button>
+                    <button type="button" onClick={() => aoTrocarResponsavel(c)}
+                      className="min-h-11 rounded-lg border border-slate-700 px-2 text-sm font-semibold text-slate-200">
+                      Responsável
+                    </button>
+                  </div>
+                  {comandaSemItens && (
+                    <button type="button" onClick={() => aoCancelar(c)}
+                      className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-red-500/30 px-2 text-sm font-semibold text-red-300 hover:bg-red-500/10">
+                      <Ban size={16} />
+                      Cancelar comanda vazia
+                    </button>
+                  )}
+                </div>
+              )
+            })}
             <button type="button" onClick={()=>aoAbrirComanda(mesa.id)} className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-orange-500/50 font-semibold text-orange-300"><CirclePlus size={17}/> Nova comanda na mesa</button>
             <p className="text-xs text-slate-500">Para transferir ou juntar mesas, feche as comandas individuais primeiro.</p>
           </article>
