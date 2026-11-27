@@ -266,38 +266,12 @@ export default function FecharComandaModal({
     setFechandoConta(true)
 
     try {
-      const agora = new Date().toISOString()
-
-      const { error: erroComanda } = await supabase
-        .from("comandas")
-        .update({
-          status: "fechada",
-          subtotal_consumo: subtotalConsumo,
-          total: subtotalConsumo,
-          total_acrescimos: totalAcrescimos,
-          total_descontos: totalDescontos,
-          total_final: totalFinal,
-          quantidade_pessoas: quantidadePessoas,
-          valor_por_pessoa: valorPorPessoa,
-          fechada_em: agora,
-        })
-        .eq("id", comanda.id)
-        .eq("status", "aberta")
-
-      if (erroComanda) {
-        throw erroComanda
-      }
-
-      const { error: erroMesa } = await supabase
-        .from("mesas")
-        .update({
-          status: "livre",
-        })
-        .eq("id", comanda.mesa_id)
-
-      if (erroMesa) {
-        throw erroMesa
-      }
+      // Banco fecha apenas esta comanda e libera a mesa somente se for a última.
+      const { error: erroFechamento } = await supabase.rpc(
+        "fechar_comanda_individual",
+        { p_comanda_id: comanda.id, p_quantidade_pessoas: quantidadePessoas }
+      )
+      if (erroFechamento) throw erroFechamento
 
       if (aoFinalizar) {
         await aoFinalizar()

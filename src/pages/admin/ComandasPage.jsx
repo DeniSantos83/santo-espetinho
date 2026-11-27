@@ -25,6 +25,7 @@ import {
   X,
 } from "lucide-react"
 import { supabase } from "../../lib/supabase"
+import { comandasAbertasDaMesa } from "../../lib/comandasPorMesa"
 import GerenciarComandaModal from "../../components/comandas/GerenciarComandaModal"
 import FecharComandaModal from "../../components/comandas/FecharComandaModal"
 
@@ -52,6 +53,7 @@ export default function ComandasPage() {
 
   const [formulario, setFormulario] = useState(FORMULARIO_INICIAL)
   const [modalAberto, setModalAberto] = useState(false)
+  const [mesaFixaId, setMesaFixaId] = useState(null)
   const [comandaExpandida, setComandaExpandida] = useState(null)
   const [comandaGerenciada, setComandaGerenciada] = useState(null)
   const [comandaParaFechar, setComandaParaFechar] = useState(null)
@@ -157,6 +159,8 @@ export default function ComandasPage() {
   }
 
   function abrirNovaComanda(mesaId = "") {
+    setMesaFixaId(mesaId || null)
+    setReservaParaAtender(null)
     const primeiraMesaLivre = mesasLivres[0]
 
     setFormulario({
@@ -173,6 +177,7 @@ export default function ComandasPage() {
     if (salvando) return
 
     setModalAberto(false)
+    setMesaFixaId(null)
     setFormulario(FORMULARIO_INICIAL)
     setReservaParaAtender(null)
     setErro("")
@@ -225,7 +230,7 @@ export default function ComandasPage() {
 
     setSalvandoReserva(true)
     try {
-      const usuarioAtual = await obterUsuarioAtual()
+      await obterUsuarioAtual()
       const { error: erroReserva } = await supabase.from("reservas_mesas").insert({
         mesa_id: formularioReserva.mesa_id,
         cliente: formularioReserva.cliente.trim(),
@@ -269,6 +274,7 @@ export default function ComandasPage() {
   }
 
   function iniciarAtendimentoReserva(reserva) {
+    setMesaFixaId(reserva.mesa_id)
     setReservaParaAtender(reserva)
     setFormulario({
       ...FORMULARIO_INICIAL,
@@ -326,61 +332,22 @@ export default function ComandasPage() {
     setSalvando(true)
 
     try {
-      const usuarioAtual = await obterUsuarioAtual()
+      await obterUsuarioAtual()
 
-      const { data: novaComanda, error: erroComanda } = await supabase
-        .from("comandas")
-        .insert({
-          mesa_id: formulario.mesa_id,
-          usuario_id: usuarioAtual.id,
-          cliente: formulario.cliente.trim() || null,
-          observacoes: formulario.observacoes.trim() || null,
-          status: "aberta",
-          total: 0,
-          subtotal_consumo: 0,
-          total_acrescimos: 0,
-          total_descontos: 0,
-          total_final: 0,
-          quantidade_pessoas: 1,
-          valor_por_pessoa: 0,
-          aberta_em: new Date().toISOString(),
-        })
-        .select()
-        .single()
-
-      if (erroComanda) {
-        if (erroComanda.code === "23505") {
-          throw new Error("Esta mesa já possui uma comanda aberta.")
+      const { data: novaComanda, error: erroComanda } = await supabase.rpc(
+        "abrir_comanda_na_mesa",
+        {
+          p_mesa_id: formulario.mesa_id,
+          p_cliente: formulario.cliente.trim() || null,
+          p_observacoes: formulario.observacoes.trim() || null,
+          ...(reservaParaAtender ? { p_reserva_id: reservaParaAtender.id } : {}),
         }
-
-        throw erroComanda
-      }
-
-      const { error: erroMesa } = await supabase
-        .from("mesas")
-        .update({ status: "ocupada" })
-        .eq("id", formulario.mesa_id)
-
-      if (erroMesa) {
-        console.error(
-          "A comanda foi criada, mas a mesa não foi atualizada:",
-          erroMesa
-        )
-      }
+      )
+      if (erroComanda) throw erroComanda
 
       setModalAberto(false)
+      setMesaFixaId(null)
       setFormulario(FORMULARIO_INICIAL)
-      if (reservaParaAtender && reservaParaAtender.mesa_id === formulario.mesa_id) {
-        const { error: erroReserva } = await supabase
-          .from("reservas_mesas")
-          .update({ status: "atendida", atendida_em: new Date().toISOString() })
-          .eq("id", reservaParaAtender.id)
-
-        if (erroReserva) {
-          console.error("Comanda aberta, mas a reserva não foi finalizada:", erroReserva)
-        }
-      }
-
       setReservaParaAtender(null)
       setMensagem("Comanda aberta com sucesso.")
 
@@ -422,26 +389,17 @@ export default function ComandasPage() {
     if (!confirmado) return
 
     try {
-      const { error: erroComanda } = await supabase
-        .from("comandas")
-        .update({
-          status: "cancelada",
-          fechada_em: new Date().toISOString(),
-        })
-        .eq("id", comanda.id)
+      const { data: cancelamento, error: erroCancelamento } = await supabase.rpc(
+        "cancelar_comanda_individual",
+        { p_comanda_id: comanda.id }
+      )
+      if (erroCancelamento) throw erroCancelamento
 
-      if (erroComanda) throw erroComanda
-
-      const { error: erroMesa } = await supabase
-        .from("mesas")
-        .update({ status: "livre" })
-        .eq("id", comanda.mesa_id)
-
-      if (erroMesa) {
-        console.error("Erro ao liberar mesa:", erroMesa)
-      }
-
-      setMensagem("Comanda cancelada e mesa liberada.")
+      setMensagem(
+        cancelamento?.mesa_liberada
+          ? "Comanda cancelada. Mesa liberada."
+          : "Comanda cancelada. A mesa permanece ocupada pelas demais comandas."
+      )
       await carregarDados()
     } catch (erroCancelamento) {
       console.error("Erro ao cancelar comanda:", erroCancelamento)
@@ -472,25 +430,10 @@ export default function ComandasPage() {
   }
 
   async function finalizarFechamento() {
-    const mesaPrincipalId = comandaParaFechar?.mesa_id
-
-    if (mesaPrincipalId) {
-      const { error: erroLiberarGrupo } = await supabase
-        .from("mesas")
-        .update({
-          status: "livre",
-          mesa_principal_id: null,
-          grupo_mesas_id: null,
-        })
-        .or(`id.eq.${mesaPrincipalId},grupo_mesas_id.eq.${mesaPrincipalId}`)
-
-      if (erroLiberarGrupo) {
-        console.error("Erro ao liberar mesas do grupo:", erroLiberarGrupo)
-      }
-    }
-
+    // A liberação da mesa e do grupo pertence à transação do banco.
+    // Não liberar pelo cliente: pode haver outras comandas abertas.
     setComandaParaFechar(null)
-    setMensagem("Conta fechada e todas as mesas do grupo foram liberadas.")
+    setMensagem("Conta fechada. Confira as demais comandas abertas antes de liberar a mesa.")
     await carregarDados()
   }
 
@@ -618,6 +561,9 @@ export default function ComandasPage() {
     let mesaDestinoReservada = false
 
     try {
+      if (obterComandasAbertasDaMesa(mesaOrigemId).length !== 1) {
+        throw new Error("Transfira apenas mesas com uma comanda aberta. A transferência de comandas individuais está em desenvolvimento.")
+      }
       const { data: destino, error: erroDestino } = await supabase
         .from("mesas")
         .select("id, numero, nome, status, ativa")
@@ -766,6 +712,14 @@ export default function ComandasPage() {
       const mesaPrincipalId = comandaParaJuntar.mesa_id
       const mesaSecundariaId = comandaSecundaria.mesa_id
 
+      // O fluxo antigo de junção unifica itens e não suporta contas independentes.
+      // Impedir perda de isolamento financeiro enquanto a operação atômica não estiver pronta.
+      const contasPrincipal = obterComandasAbertasDaMesa(mesaPrincipalId)
+      const contasSecundaria = obterComandasAbertasDaMesa(mesaSecundariaId)
+      if (contasPrincipal.length !== 1 || contasSecundaria.length !== 1) {
+        throw new Error("Não é possível juntar mesas com comandas individuais. Feche as contas ou aguarde a nova função de junção.")
+      }
+
       if (mesaPrincipalId === mesaSecundariaId) {
         throw new Error("Selecione outra mesa para realizar a junção.")
       }
@@ -861,6 +815,9 @@ export default function ComandasPage() {
     setSeparandoMesaId(mesa.id)
 
     try {
+      if (obterComandasAbertasDaMesa(mesa.id).length > 0) {
+        throw new Error("A mesa ainda possui comandas abertas e não pode ser liberada.")
+      }
       const { data: mesaSeparada, error: erroSeparacao } = await supabase
         .from("mesas")
         .update({
@@ -964,6 +921,10 @@ export default function ComandasPage() {
     return usuario?.nome ?? "Não identificado"
   }
 
+  function obterComandasAbertasDaMesa(mesaId) {
+    return comandasAbertasDaMesa(comandas, mesaId)
+  }
+
   function obterComandaAbertaDaMesa(mesaId) {
     return comandas.find(
       (comanda) =>
@@ -1013,19 +974,23 @@ export default function ComandasPage() {
   }, [mesasAtivas, idsMesasOcupadas, idsMesasReservadas])
 
   const mesasDisponiveisParaComanda = useMemo(() => {
-    if (!reservaParaAtender) return mesasLivres
+    const disponiveis = mesasAtivas.filter(mesa =>
+      !mesa.mesa_principal_id && !mesa.grupo_mesas_id &&
+      (!idsMesasReservadas.includes(mesa.id) || idsMesasOcupadas.includes(mesa.id))
+    )
+    if (!reservaParaAtender) return disponiveis
 
     const mesaReservada = mesasAtivas.find(
       (mesa) => mesa.id === reservaParaAtender.mesa_id
     )
 
-    if (!mesaReservada) return mesasLivres
+    if (!mesaReservada) return disponiveis
 
     return [
       mesaReservada,
-      ...mesasLivres.filter((mesa) => mesa.id !== mesaReservada.id),
+      ...disponiveis.filter((mesa) => mesa.id !== mesaReservada.id),
     ]
-  }, [mesasLivres, mesasAtivas, reservaParaAtender])
+  }, [mesasAtivas, idsMesasReservadas, idsMesasOcupadas, reservaParaAtender])
 
   const mesasFiltradas = useMemo(() => {
     const termo = busca.trim().toLowerCase()
@@ -1036,7 +1001,7 @@ export default function ComandasPage() {
       const reservada = Boolean(obterReservaAtivaDaMesa(mesa.id))
 
       const textoMesa = `mesa ${mesa.numero} ${mesa.nome ?? ""}`.toLowerCase()
-      const cliente = comanda?.cliente?.toLowerCase() ?? ""
+      const cliente = obterComandasAbertasDaMesa(mesa.id).map(c => c.cliente ?? "").join(" ").toLowerCase()
 
       const correspondeBusca =
         !termo ||
@@ -1241,6 +1206,7 @@ export default function ComandasPage() {
           mesas={mesasFiltradas}
           agora={agora}
           obterComanda={obterComandaAbertaDaMesa}
+          obterComandas={obterComandasAbertasDaMesa}
           obterTotal={obterTotalExibido}
           calcularQuantidadeItens={calcularQuantidadeItens}
           aoAbrirComanda={abrirNovaComanda}
@@ -1276,6 +1242,7 @@ export default function ComandasPage() {
         <ModalNovaComanda
           formulario={formulario}
           mesasLivres={mesasDisponiveisParaComanda}
+          mesaFixaId={mesaFixaId}
           salvando={salvando}
           erro={erro}
           aoAtualizarCampo={atualizarCampo}
@@ -1382,6 +1349,7 @@ function PainelMesas({
   mesas,
   agora,
   obterComanda,
+  obterComandas,
   obterTotal,
   calcularQuantidadeItens,
   aoAbrirComanda,
@@ -1412,7 +1380,8 @@ function PainelMesas({
   return (
     <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
       {mesas.map((mesa) => {
-        const comanda = obterComanda(mesa.id)
+        const comandasDaMesa = obterComandas(mesa.id)
+        const comanda = comandasDaMesa[0]
 
         if (mesa.mesa_principal_id) {
           const comandaPrincipal = obterComanda(mesa.mesa_principal_id)
@@ -1457,6 +1426,54 @@ function PainelMesas({
           )
         }
 
+        if (comandasDaMesa.length > 1) {
+          return <article key={mesa.id} className="flex flex-col gap-3 rounded-2xl border border-orange-500/30 bg-slate-900 p-5">
+            <div className="flex items-center justify-between"><h3 className="text-xl font-bold text-white">Mesa {mesa.numero}</h3><span className="rounded-full bg-orange-500/10 px-3 py-1 text-xs font-bold text-orange-300">{comandasDaMesa.length} comandas</span></div>
+            <p className="text-sm text-slate-400">Total da mesa: <strong className="text-white">{formatarMoeda(comandasDaMesa.reduce((s,c)=>s+obterTotal(c),0))}</strong></p>
+            {comandasDaMesa.map(c => {
+              const comandaSemItens = calcularQuantidadeItens(c.id) === 0
+              return (
+                <div key={c.id} className="rounded-xl border border-slate-700 bg-slate-950/70 p-3">
+                  <div className="flex justify-between gap-2">
+                    <strong className="min-w-0 truncate text-white">{c.cliente || "Comanda sem nome"}</strong>
+                    <strong className="shrink-0 text-emerald-300">{formatarMoeda(obterTotal(c))}</strong>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-400">
+                    {calcularQuantidadeItens(c.id)} itens · Responsável: {nomeDoUsuario(c.usuario_id)}
+                  </p>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <button type="button" onClick={() => aoGerenciar(c)}
+                      className="min-h-11 rounded-lg bg-orange-600 px-2 text-sm font-bold text-white">
+                      Pedidos
+                    </button>
+                    <button type="button" onClick={() => aoFecharConta(c)} disabled={comandaSemItens}
+                      className="min-h-11 rounded-lg border border-emerald-500/40 px-2 text-sm font-semibold text-emerald-300 disabled:cursor-not-allowed disabled:opacity-40">
+                      Fechar conta
+                    </button>
+                    <button type="button" onClick={() => aoPreConta(c)} disabled={comandaSemItens}
+                      className="min-h-11 rounded-lg border border-slate-700 px-2 text-sm font-semibold text-slate-200 disabled:cursor-not-allowed disabled:opacity-40">
+                      Pré-conta
+                    </button>
+                    <button type="button" onClick={() => aoTrocarResponsavel(c)}
+                      className="min-h-11 rounded-lg border border-slate-700 px-2 text-sm font-semibold text-slate-200">
+                      Responsável
+                    </button>
+                  </div>
+                  {comandaSemItens && (
+                    <button type="button" onClick={() => aoCancelar(c)}
+                      className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-red-500/30 px-2 text-sm font-semibold text-red-300 hover:bg-red-500/10">
+                      <Ban size={16} />
+                      Cancelar comanda vazia
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+            <button type="button" onClick={()=>aoAbrirComanda(mesa.id)} className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-orange-500/50 font-semibold text-orange-300"><CirclePlus size={17}/> Nova comanda na mesa</button>
+            <p className="text-xs text-slate-500">Para transferir ou juntar mesas, feche as comandas individuais primeiro.</p>
+          </article>
+        }
+
         return (
           <MesaOcupadaCard
             key={mesa.id}
@@ -1473,6 +1490,7 @@ function PainelMesas({
             aoTrocarResponsavel={() => aoTrocarResponsavel(comanda)}
             nomeResponsavel={nomeDoUsuario(comanda.usuario_id)}
             aoCancelar={() => aoCancelar(comanda)}
+            aoNovaComanda={() => aoAbrirComanda(mesa.id)}
           />
         )
       })}
@@ -1682,6 +1700,7 @@ function MesaOcupadaCard({
   aoTrocarResponsavel,
   nomeResponsavel,
   aoCancelar,
+  aoNovaComanda,
 }) {
   const tempo = calcularTempoAberta(comanda.aberta_em, agora)
   const semItens = quantidadeItens === 0
@@ -1741,6 +1760,7 @@ function MesaOcupadaCard({
           </div>
         </div>
 
+        <button type="button" onClick={aoNovaComanda} className="mb-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-orange-500/40 font-semibold text-orange-300"><CirclePlus size={17}/> Nova comanda nesta mesa</button>
         <div className="mt-auto grid grid-cols-2 gap-2">
           <button
             type="button"
@@ -2207,6 +2227,7 @@ function ModalReservaMesa({ formulario, mesasDisponiveis, salvando, erro, aoAtua
 function ModalNovaComanda({
   formulario,
   mesasLivres,
+  mesaFixaId,
   salvando,
   erro,
   aoAtualizarCampo,
@@ -2223,7 +2244,7 @@ function ModalNovaComanda({
             </h3>
 
             <p className="mt-1 text-sm text-slate-400">
-              Escolha a mesa que receberá os pedidos.
+              {mesaFixaId ? "A mesa já está vinculada. Informe o cliente." : "Escolha a mesa que receberá os pedidos."}
             </p>
           </div>
 
@@ -2237,6 +2258,17 @@ function ModalNovaComanda({
         </div>
 
         <form onSubmit={aoSalvar} className="space-y-5 p-5">
+          {mesaFixaId ? (
+            <div>
+              <p className="mb-2 text-sm font-medium text-slate-300">Mesa vinculada</p>
+              <div className="rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-3 font-semibold text-white" aria-label="Mesa vinculada, não pode ser alterada">
+                {(() => {
+                  const mesa = mesasLivres.find((item) => item.id === mesaFixaId)
+                  return mesa ? `Mesa ${mesa.numero}${mesa.nome ? ` — ${mesa.nome}` : ""}` : "Mesa selecionada"
+                })()}
+              </div>
+            </div>
+          ) : (
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-300">
               Mesa *
@@ -2259,6 +2291,7 @@ function ModalNovaComanda({
               ))}
             </select>
           </div>
+          )}
 
           <div>
             <label className="mb-2 block text-sm font-medium text-slate-300">

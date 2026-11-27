@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react"
 import { supabase } from "../../lib/supabase"
+import { comandasAbertasDaMesa } from "../../lib/comandasPorMesa"
 import GerenciarComandaModal from "../../components/comandas/GerenciarComandaModal"
 
 const FORMULARIO_INICIAL = {
@@ -26,11 +27,13 @@ const FORMULARIO_INICIAL = {
 export default function ComandasPage() {
   const [comandas, setComandas] = useState([])
   const [mesas, setMesas] = useState([])
+  const [reservas, setReservas] = useState([])
   const [usuarios, setUsuarios] = useState([])
   const [itens, setItens] = useState([])
 
   const [formulario, setFormulario] = useState(FORMULARIO_INICIAL)
   const [modalAberto, setModalAberto] = useState(false)
+  const [mesaFixaId, setMesaFixaId] = useState(null)
   const [comandaGerenciada, setComandaGerenciada] = useState(null)
   const [comandaPreConta, setComandaPreConta] = useState(null)
 
@@ -71,6 +74,7 @@ export default function ComandasPage() {
         resultadoMesas,
         resultadoUsuarios,
         resultadoItens,
+        resultadoReservas,
       ] = await Promise.all([
         supabase
           .from("comandas")
@@ -105,17 +109,24 @@ export default function ComandasPage() {
             )
           `)
           .order("criado_em", { ascending: true }),
+
+        supabase
+          .from("reservas_mesas")
+          .select("id, mesa_id, status, cliente")
+          .eq("status", "ativa"),
       ])
 
       if (resultadoComandas.error) throw resultadoComandas.error
       if (resultadoMesas.error) throw resultadoMesas.error
       if (resultadoUsuarios.error) throw resultadoUsuarios.error
       if (resultadoItens.error) throw resultadoItens.error
+      if (resultadoReservas.error) throw resultadoReservas.error
 
       setComandas(resultadoComandas.data ?? [])
       setMesas(resultadoMesas.data ?? [])
       setUsuarios(resultadoUsuarios.data ?? [])
       setItens(resultadoItens.data ?? [])
+      setReservas(resultadoReservas.data ?? [])
     } catch (erroCarregamento) {
       console.error("Erro ao carregar painel do garçom:", erroCarregamento)
       setErro("Não foi possível carregar as mesas e comandas.")
@@ -152,7 +163,8 @@ export default function ComandasPage() {
   }
 
   function abrirNovaComanda(mesaId = "") {
-    const primeiraMesa = mesasLivres[0]
+    setMesaFixaId(mesaId || null)
+    const primeiraMesa = mesasDisponiveisParaComanda[0]
 
     setFormulario({
       ...FORMULARIO_INICIAL,
@@ -166,6 +178,7 @@ export default function ComandasPage() {
   function fecharModal() {
     if (salvando) return
     setModalAberto(false)
+    setMesaFixaId(null)
     setFormulario(FORMULARIO_INICIAL)
     setErro("")
   }
@@ -188,51 +201,17 @@ export default function ComandasPage() {
     setSalvando(true)
 
     try {
-      const usuario = await obterUsuarioAtual()
+      await obterUsuarioAtual()
 
-      const { data: existente, error: erroConsulta } = await supabase
-        .from("comandas")
-        .select("id")
-        .eq("mesa_id", formulario.mesa_id)
-        .eq("status", "aberta")
-        .maybeSingle()
-
-      if (erroConsulta) throw erroConsulta
-
-      if (existente) {
-        throw new Error("Esta mesa já possui uma comanda aberta.")
-      }
-
-      const { data: novaComanda, error: erroComanda } = await supabase
-        .from("comandas")
-        .insert({
-          mesa_id: formulario.mesa_id,
-          usuario_id: usuario.id,
-          cliente: formulario.cliente.trim() || null,
-          observacoes: formulario.observacoes.trim() || null,
-          status: "aberta",
-          total: 0,
-          subtotal_consumo: 0,
-          total_acrescimos: 0,
-          total_descontos: 0,
-          total_final: 0,
-          quantidade_pessoas: 1,
-          valor_por_pessoa: 0,
-          aberta_em: new Date().toISOString(),
-        })
-        .select()
-        .single()
-
+      const { data: novaComanda, error: erroComanda } = await supabase.rpc(
+        "abrir_comanda_na_mesa",
+        {
+          p_mesa_id: formulario.mesa_id,
+          p_cliente: formulario.cliente.trim() || null,
+          p_observacoes: formulario.observacoes.trim() || null,
+        }
+      )
       if (erroComanda) throw erroComanda
-
-      const { error: erroMesa } = await supabase
-        .from("mesas")
-        .update({ status: "ocupada" })
-        .eq("id", formulario.mesa_id)
-
-      if (erroMesa) {
-        console.error("Comanda criada, mas a mesa não foi atualizada:", erroMesa)
-      }
 
       setModalAberto(false)
       setFormulario(FORMULARIO_INICIAL)
@@ -250,6 +229,10 @@ export default function ComandasPage() {
     } finally {
       setSalvando(false)
     }
+  }
+
+  function obterComandasDaMesa(mesaId) {
+    return comandasAbertasDaMesa(comandas, mesaId)
   }
 
   function obterComandaDaMesa(mesaId) {
@@ -297,6 +280,8 @@ export default function ComandasPage() {
     [comandas]
   )
 
+  const idsMesasReservadas = useMemo(() => reservas.map(r => r.mesa_id), [reservas])
+
   const mesasLivres = useMemo(
     () =>
       mesas.filter(
@@ -304,9 +289,16 @@ export default function ComandasPage() {
           !idsOcupadas.includes(mesa.id) &&
           !mesa.mesa_principal_id &&
           !mesa.grupo_mesas_id &&
-          mesa.status !== "reservada"
+          !idsMesasReservadas.includes(mesa.id)
       ),
-    [mesas, idsOcupadas]
+    [mesas, idsOcupadas, idsMesasReservadas]
+  )
+
+  const mesasDisponiveisParaComanda = useMemo(
+    () => mesas.filter(mesa =>
+      !mesa.mesa_principal_id && !mesa.grupo_mesas_id &&
+      (idsOcupadas.includes(mesa.id) || !idsMesasReservadas.includes(mesa.id))
+    ), [mesas, idsOcupadas, idsMesasReservadas]
   )
 
   const mesasFiltradas = useMemo(() => {
@@ -314,9 +306,10 @@ export default function ComandasPage() {
 
     const resultado = mesas.filter((mesa) => {
       const comanda = obterComandaDaMesa(mesa.id)
+      const clientes = obterComandasDaMesa(mesa.id).map(c => c.cliente || "").join(" ")
       const ocupada = Boolean(comanda || mesa.mesa_principal_id)
       const texto =
-        `mesa ${mesa.numero} ${mesa.nome ?? ""} ${comanda?.cliente ?? ""}`.toLowerCase()
+        `mesa ${mesa.numero} ${mesa.nome ?? ""} ${clientes}`.toLowerCase()
 
       const correspondeBusca = !termo || texto.includes(termo)
       const correspondeFiltro =
@@ -351,7 +344,7 @@ export default function ComandasPage() {
         </div>
         <div className="grid grid-cols-[auto_1fr] gap-2 sm:flex sm:shrink-0">
           <button type="button" onClick={() => carregarDados()} disabled={carregando} className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800 px-4 text-sm font-semibold text-slate-100 transition hover:bg-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-400 disabled:opacity-50" aria-label="Atualizar dados das mesas"><RefreshCw size={18} className={carregando ? "animate-spin" : ""}/><span className="hidden sm:inline">Atualizar</span></button>
-          <button type="button" onClick={() => abrirNovaComanda()} disabled={mesasLivres.length === 0} className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 text-sm font-bold text-white transition hover:bg-orange-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-400 disabled:opacity-50"><CirclePlus size={19}/> Nova comanda</button>
+          <button type="button" onClick={() => abrirNovaComanda()} disabled={mesasDisponiveisParaComanda.length === 0} className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 text-sm font-bold text-white transition hover:bg-orange-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-400 disabled:opacity-50"><CirclePlus size={19}/> Nova comanda</button>
         </div>
       </div>
 
@@ -397,12 +390,28 @@ export default function ComandasPage() {
                 {principal && <button type="button" onClick={()=>setComandaGerenciada(principal)} className="mt-4 min-h-12 w-full rounded-xl bg-orange-600 px-4 text-sm font-bold text-white transition hover:bg-orange-500">Lançar pedido na mesa principal</button>}
               </article>
             }
-            const comanda = obterComandaDaMesa(mesa.id)
+            const comandasDaMesa = obterComandasDaMesa(mesa.id)
+            const comanda = comandasDaMesa[0]
+            if (!comanda && idsMesasReservadas.includes(mesa.id)) return <article key={mesa.id} className="flex min-h-44 flex-col rounded-2xl border border-sky-500/30 bg-slate-900 p-4 sm:p-5">
+              <span className="text-xs font-bold uppercase text-sky-300">Reservada</span>
+              <h3 className="mt-3 text-2xl font-bold text-white">Mesa {mesa.numero}</h3>
+              <p className="mt-2 text-sm text-slate-400">O atendimento desta reserva deve ser iniciado pela gerência ou administração.</p>
+            </article>
             if (!comanda) return <article key={mesa.id} className="flex min-h-44 flex-col rounded-2xl border border-emerald-500/20 bg-slate-900 p-4 transition hover:border-emerald-500/40 sm:p-5">
               <div className="flex items-center justify-between gap-3"><span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-300"><CheckCircle2 size={13}/> Livre</span><Armchair size={22} className="text-emerald-300" /></div>
               <h3 className="mt-3 text-2xl font-bold text-white">Mesa {mesa.numero}</h3>
               {mesa.nome && <p className="mt-1 text-sm text-slate-400">{mesa.nome}</p>}
               <button type="button" onClick={()=>abrirNovaComanda(mesa.id)} className="mt-auto flex min-h-12 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-bold text-white transition hover:bg-emerald-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-400"><CirclePlus size={18}/> Abrir comanda</button>
+            </article>
+            if (comandasDaMesa.length > 1) return <article key={mesa.id} className="flex flex-col gap-3 rounded-2xl border border-orange-500/30 bg-slate-900 p-4 sm:p-5">
+              <div className="flex items-center justify-between"><h3 className="text-xl font-bold text-white">Mesa {mesa.numero}</h3><span className="rounded-full bg-orange-500/15 px-3 py-1 text-xs font-bold text-orange-300">{comandasDaMesa.length} comandas</span></div>
+              <p className="text-sm text-slate-400">Total da mesa: <strong className="text-white">{formatarMoeda(comandasDaMesa.reduce((s,c)=>s+totalComanda(c.id),0))}</strong></p>
+              {comandasDaMesa.map(c => <div key={c.id} className="rounded-xl border border-slate-700 bg-slate-950/70 p-3">
+                <div className="flex items-center justify-between gap-2"><strong className="text-sm text-white">{c.cliente || "Comanda sem nome"}</strong><strong className="text-emerald-300">{formatarMoeda(totalComanda(c.id))}</strong></div>
+                <p className="mt-1 text-xs text-slate-400">{quantidadeItens(c.id)} itens · {nomeGarcom(c.usuario_id)}</p>
+                <div className="mt-3 grid grid-cols-2 gap-2"><button type="button" onClick={()=>setComandaGerenciada(c)} className="min-h-11 rounded-lg bg-orange-600 px-2 text-sm font-bold text-white">Lançar pedido</button><button type="button" onClick={()=>setComandaPreConta(c)} className="min-h-11 rounded-lg border border-slate-600 px-2 text-sm font-semibold text-slate-200">Pré-conta</button></div>
+              </div>)}
+              <button type="button" onClick={()=>abrirNovaComanda(mesa.id)} className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-orange-500/50 text-sm font-bold text-orange-300"><CirclePlus size={17}/> Nova comanda nesta mesa</button>
             </article>
             return <article key={mesa.id} className="flex min-h-60 flex-col rounded-2xl border border-orange-500/25 bg-slate-900 p-4 transition hover:border-orange-500/45 sm:p-5">
               <div className="flex items-center justify-between gap-3"><span className="inline-flex items-center gap-1.5 rounded-full bg-orange-500/10 px-2.5 py-1 text-xs font-bold text-orange-300"><ShoppingCart size={13}/> Em atendimento</span><span className="inline-flex items-center gap-1.5 text-xs text-slate-400"><Clock3 size={14}/>{tempoAberta(comanda.aberta_em, agora)}</span></div>
@@ -410,7 +419,7 @@ export default function ComandasPage() {
               <p className="mt-1 flex items-center gap-2 truncate text-sm text-slate-300"><UserRound size={15} className="shrink-0 text-slate-500"/>{comanda.cliente || "Cliente não informado"}</p>
               <p className="mt-1 truncate text-xs text-slate-500">Responsável: {nomeGarcom(comanda.usuario_id)}</p>
               <div className="mt-4 flex items-end justify-between border-t border-slate-800 pt-3"><span className="text-xs text-slate-400">{quantidadeItens(comanda.id)} {quantidadeItens(comanda.id)===1 ? "item" : "itens"}</span><strong className="text-xl font-bold tabular-nums text-white">{formatarMoeda(totalComanda(comanda.id))}</strong></div>
-              <div className="mt-auto grid grid-cols-2 gap-2 pt-4"><button type="button" onClick={()=>setComandaGerenciada(comanda)} className="min-h-12 rounded-xl bg-orange-600 px-2 text-sm font-bold text-white transition hover:bg-orange-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-400">Lançar pedido</button><button type="button" onClick={()=>setComandaPreConta(comanda)} className="flex min-h-12 items-center justify-center gap-1.5 rounded-xl border border-slate-700 px-2 text-sm font-semibold text-slate-200 transition hover:bg-slate-800"><ReceiptText size={16}/> Pré-conta</button></div>
+              <div className="mt-auto grid grid-cols-2 gap-2 pt-4"><button type="button" onClick={()=>setComandaGerenciada(comanda)} className="min-h-12 rounded-xl bg-orange-600 px-2 text-sm font-bold text-white transition hover:bg-orange-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-400">Lançar pedido</button><button type="button" onClick={()=>setComandaPreConta(comanda)} className="flex min-h-12 items-center justify-center gap-1.5 rounded-xl border border-slate-700 px-2 text-sm font-semibold text-slate-200 transition hover:bg-slate-800"><ReceiptText size={16}/> Pré-conta</button></div><button type="button" onClick={()=>abrirNovaComanda(mesa.id)} className="mt-2 min-h-11 w-full rounded-xl border border-orange-500/40 text-sm font-semibold text-orange-300"><CirclePlus size={16} className="mr-1 inline"/> Nova comanda nesta mesa</button>
             </article>
           })}
         </div>
@@ -419,7 +428,8 @@ export default function ComandasPage() {
       {modalAberto && (
         <ModalNovaComanda
           formulario={formulario}
-          mesas={mesasLivres}
+          mesas={mesasDisponiveisParaComanda}
+          mesaFixaId={mesaFixaId}
           salvando={salvando}
           erro={erro}
           aoAtualizar={atualizarCampo}
@@ -464,6 +474,7 @@ function Resumo({ titulo, valor, compacto = false, variante = "livre" }) {
 function ModalNovaComanda({
   formulario,
   mesas,
+  mesaFixaId,
   salvando,
   erro,
   aoAtualizar,
@@ -477,7 +488,7 @@ function ModalNovaComanda({
           <div>
             <h2 className="text-xl font-bold text-white">Abrir comanda</h2>
             <p className="mt-1 text-sm text-slate-400">
-              Escolha a mesa e informe o cliente.
+              {mesaFixaId ? "A mesa já está vinculada. Informe o cliente." : "Escolha a mesa e informe o cliente."}
             </p>
           </div>
           <button
@@ -490,6 +501,17 @@ function ModalNovaComanda({
         </div>
 
         <form onSubmit={aoSalvar} className="space-y-4 p-5">
+          {mesaFixaId ? (
+            <div>
+              <p className="mb-2 text-sm text-slate-300">Mesa vinculada</p>
+              <div className="min-h-12 rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-3 font-semibold text-white" aria-label="Mesa vinculada, não pode ser alterada">
+                {(() => {
+                  const mesa = mesas.find((item) => item.id === mesaFixaId)
+                  return mesa ? `Mesa ${mesa.numero}${mesa.nome ? ` — ${mesa.nome}` : ""}` : "Mesa selecionada"
+                })()}
+              </div>
+            </div>
+          ) : (
           <div>
             <label className="mb-2 block text-sm text-slate-300">Mesa *</label>
             <select
@@ -507,6 +529,7 @@ function ModalNovaComanda({
               ))}
             </select>
           </div>
+          )}
 
           <div>
             <label className="mb-2 block text-sm text-slate-300">
