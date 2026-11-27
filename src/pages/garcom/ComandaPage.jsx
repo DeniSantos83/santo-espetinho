@@ -26,6 +26,7 @@ const FORMULARIO_INICIAL = {
 export default function ComandasPage() {
   const [comandas, setComandas] = useState([])
   const [mesas, setMesas] = useState([])
+  const [reservas, setReservas] = useState([])
   const [usuarios, setUsuarios] = useState([])
   const [itens, setItens] = useState([])
 
@@ -71,6 +72,7 @@ export default function ComandasPage() {
         resultadoMesas,
         resultadoUsuarios,
         resultadoItens,
+        resultadoReservas,
       ] = await Promise.all([
         supabase
           .from("comandas")
@@ -105,17 +107,24 @@ export default function ComandasPage() {
             )
           `)
           .order("criado_em", { ascending: true }),
+
+        supabase
+          .from("reservas_mesas")
+          .select("id, mesa_id, status, cliente")
+          .eq("status", "ativa"),
       ])
 
       if (resultadoComandas.error) throw resultadoComandas.error
       if (resultadoMesas.error) throw resultadoMesas.error
       if (resultadoUsuarios.error) throw resultadoUsuarios.error
       if (resultadoItens.error) throw resultadoItens.error
+      if (resultadoReservas.error) throw resultadoReservas.error
 
       setComandas(resultadoComandas.data ?? [])
       setMesas(resultadoMesas.data ?? [])
       setUsuarios(resultadoUsuarios.data ?? [])
       setItens(resultadoItens.data ?? [])
+      setReservas(resultadoReservas.data ?? [])
     } catch (erroCarregamento) {
       console.error("Erro ao carregar painel do garçom:", erroCarregamento)
       setErro("Não foi possível carregar as mesas e comandas.")
@@ -267,6 +276,8 @@ export default function ComandasPage() {
     [comandas]
   )
 
+  const idsMesasReservadas = useMemo(() => reservas.map(r => r.mesa_id), [reservas])
+
   const mesasLivres = useMemo(
     () =>
       mesas.filter(
@@ -274,16 +285,16 @@ export default function ComandasPage() {
           !idsOcupadas.includes(mesa.id) &&
           !mesa.mesa_principal_id &&
           !mesa.grupo_mesas_id &&
-          mesa.status !== "reservada"
+          !idsMesasReservadas.includes(mesa.id)
       ),
-    [mesas, idsOcupadas]
+    [mesas, idsOcupadas, idsMesasReservadas]
   )
 
   const mesasDisponiveisParaComanda = useMemo(
     () => mesas.filter(mesa =>
       !mesa.mesa_principal_id && !mesa.grupo_mesas_id &&
-      (idsOcupadas.includes(mesa.id) || mesa.status !== "reservada")
-    ), [mesas, idsOcupadas]
+      (idsOcupadas.includes(mesa.id) || !idsMesasReservadas.includes(mesa.id))
+    ), [mesas, idsOcupadas, idsMesasReservadas]
   )
 
   const mesasFiltradas = useMemo(() => {
@@ -377,6 +388,11 @@ export default function ComandasPage() {
             }
             const comandasDaMesa = obterComandasDaMesa(mesa.id)
             const comanda = comandasDaMesa[0]
+            if (!comanda && idsMesasReservadas.includes(mesa.id)) return <article key={mesa.id} className="flex min-h-44 flex-col rounded-2xl border border-sky-500/30 bg-slate-900 p-4 sm:p-5">
+              <span className="text-xs font-bold uppercase text-sky-300">Reservada</span>
+              <h3 className="mt-3 text-2xl font-bold text-white">Mesa {mesa.numero}</h3>
+              <p className="mt-2 text-sm text-slate-400">O atendimento desta reserva deve ser iniciado pela gerência ou administração.</p>
+            </article>
             if (!comanda) return <article key={mesa.id} className="flex min-h-44 flex-col rounded-2xl border border-emerald-500/20 bg-slate-900 p-4 transition hover:border-emerald-500/40 sm:p-5">
               <div className="flex items-center justify-between gap-3"><span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-300"><CheckCircle2 size={13}/> Livre</span><Armchair size={22} className="text-emerald-300" /></div>
               <h3 className="mt-3 text-2xl font-bold text-white">Mesa {mesa.numero}</h3>
